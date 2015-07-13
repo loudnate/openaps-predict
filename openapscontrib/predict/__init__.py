@@ -38,7 +38,7 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return []
+    return [glucose]
 
 
 def _opt_date(timestamp):
@@ -69,7 +69,7 @@ def _opt_json_file(filename):
         return _json_file(filename)
 
 
-class BaseUse(Use):
+class glucose(Use):
     def configure_app(self, app, parser):
         """Define command arguments.
 
