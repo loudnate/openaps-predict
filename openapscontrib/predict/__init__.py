@@ -70,6 +70,9 @@ def _opt_json_file(filename):
 
 
 class glucose(Use):
+    """Predict glucose
+
+    """
     def configure_app(self, app, parser):
         """Define command arguments.
 
