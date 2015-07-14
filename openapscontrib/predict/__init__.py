@@ -124,11 +124,11 @@ class glucose(Use):
         :rtype: tuple(list, dict)
         """
         args = (
-            _json_file(params.pop('normalized_history')),
-            _json_file(params.pop('normalized_glucose')),
+            _json_file(params.pop('normalized-history')),
+            _json_file(params.pop('normalized-glucose')),
             params.pop('insulin_action_curve', None) or _opt_json_file(params.pop('settings', ''))['insulin_action_curve'],
+            Schedule(_json_file(params['insulin_sensitivities'])['sensitivities']),
             Schedule(_json_file(params['carb_ratios'])['schedule']),
-            Schedule(_json_file(params['insulin_sensitivities'])['sensitivities'])
         )
 
         return args, dict()

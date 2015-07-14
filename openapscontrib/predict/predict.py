@@ -1,5 +1,6 @@
 import datetime
 from dateutil.parser import parse
+import math
 from scipy.integrate import simps
 from openapscontrib.mmhistorytools.models import Unit
 
@@ -123,7 +124,7 @@ def integrate_iob(t0, t1, insulin_action_duration, t):
 
 
 def bolus_effect_at_datetime(event, t, insulin_sensitivity, insulin_action_duration):
-    return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration))
+    return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration * 60.0))
 
 
 def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio):
@@ -131,7 +132,7 @@ def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio):
 
 
 def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin_action_duration):
-    int_iob = integrate_iob(t0, t1, insulin_action_duration, t)
+    int_iob = integrate_iob(t0, t1, insulin_action_duration * 60.0, t)
 
     return -event['amount'] / 60.0 * insulin_sensitivity * ((t1 - t0) - int_iob)
 
@@ -146,8 +147,8 @@ def foo(
 ):
     assert len(normalized_glucose) > 0
 
-    last_glucose_value = normalized_glucose[-1].get('sgv') or normalized_glucose[-1].get('amount')
-    last_glucose_datetime = parse(normalized_glucose[-1]['date'])
+    last_glucose_value = normalized_glucose[0].get('sgv') or normalized_glucose[0].get('amount')
+    last_glucose_datetime = parse(normalized_glucose[0]['date'])
 
     # Determine our simulation time.
     simulation_start = last_glucose_datetime
@@ -159,23 +160,23 @@ def foo(
         simulation_end = max(simulation_end, last_history_datetime)
 
     # For each incremental minute from the simulation start time, calculate the effect values
-    simulation_minutes = range(0, (simulation_end - simulation_start).total_seconds() / 60.0 + dt, dt)
-    simulation_timestamps = (simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes)
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
     simulation_count = len(simulation_minutes)
 
-    carb_effect = [0] * simulation_count
-    insulin_effect = [0] * simulation_count
+    carb_effect = [0.0] * simulation_count
+    insulin_effect = [0.0] * simulation_count
 
     for history_event in normalized_history:
         initial_effect = 0
 
         for i, timestamp in enumerate(simulation_timestamps):
-            insulin_sensitivity = insulin_sensitivity_schedule.at(timestamp.time())
+            insulin_sensitivity = insulin_sensitivity_schedule.at(timestamp.time())['sensitivity']
             start_at = parse(history_event['start_at'])
             t = (timestamp - start_at).total_seconds() / 60.0
 
             if history_event['unit'] == Unit.grams:
-                carb_ratio = carb_ratio_schedule.at(timestamp.time())
+                carb_ratio = carb_ratio_schedule.at(timestamp.time())['ratio']
                 effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio)
                 apply_to = carb_effect
             elif history_event['unit'] == Unit.units:
@@ -190,14 +191,13 @@ def foo(
             else:
                 raise ValueError('Unknown event %s', history_event)
 
-            if t == 0:
+            if i == 0:
                 initial_effect = effect
 
             effect -= initial_effect
             apply_to[i] += effect
 
     return [(
-        simulation_timestamps[i].isoformat(),
+        timestamp.isoformat(),
         last_glucose_value + carb_effect[i] + insulin_effect[i]
-    ) for i in range(simulation_count)]
-
+    ) for i, timestamp in enumerate(simulation_timestamps)]
