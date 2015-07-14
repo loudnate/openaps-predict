@@ -113,7 +113,14 @@ class glucose(Use):
         )
 
     def get_params(self, args):
-        return dict(**args.__dict__)
+        params = dict(**args.__dict__)
+
+        if params.get('settings') is not None:
+            del params['insulin_action_curve']
+        else:
+            del params['settings']
+
+        return params
 
     def get_program(self, params):
         """Parses params into history parser constructor arguments
