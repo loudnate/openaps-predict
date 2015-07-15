@@ -1,7 +1,6 @@
 import datetime
 from dateutil.parser import parse
 import math
-from scipy.integrate import simps
 from openapscontrib.mmhistorytools.models import Unit
 
 
@@ -78,9 +77,9 @@ def walsh_iob_curve(t, insulin_action_duration):
     assert insulin_action_duration in (3 * 60, 4 * 60, 5 * 60, 6 * 60)
     iob = 0
 
-    if t < 0 or t >= insulin_action_duration:
+    if t >= insulin_action_duration:
         iob = 0.0
-    elif t == 0:
+    elif t <= 0:
         iob = 1.0
     elif insulin_action_duration == 3 * 60:
         iob = -3.2030e-9 * (t**4) + 1.354e-6 * (t**3) - 1.759e-4 * (t**2) + 9.255e-4 * t + 0.99951
@@ -152,12 +151,14 @@ def foo(
 
     # Determine our simulation time.
     simulation_start = last_glucose_datetime
-    simulation_end = last_glucose_datetime + datetime.timedelta(hours=insulin_action_curve)
+    simulation_end = last_glucose_datetime
 
     if len(normalized_history) > 0:
         last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
         last_history_datetime = parse(last_history_event['end_at'])
         simulation_end = max(simulation_end, last_history_datetime)
+
+    simulation_end += datetime.timedelta(hours=insulin_action_curve)
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
