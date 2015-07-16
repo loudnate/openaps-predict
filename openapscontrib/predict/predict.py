@@ -33,7 +33,7 @@ class Schedule(object):
         return result
 
 
-def carb_effect_curve(t, absorption_time=180):
+def carb_effect_curve(t, absorption_time):
     """Returns the fraction of total carbohydrate effect with a given absorption time on blood
     glucose at the specified number of minutes after eating.
 
@@ -126,8 +126,8 @@ def bolus_effect_at_datetime(event, t, insulin_sensitivity, insulin_action_durat
     return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration * 60.0))
 
 
-def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio):
-    return insulin_sensitivity / carb_ratio * event['amount'] * carb_effect_curve(t)
+def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio, absorption_rate):
+    return insulin_sensitivity / carb_ratio * event['amount'] * carb_effect_curve(t, absorption_rate)
 
 
 def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin_action_duration):
@@ -170,15 +170,28 @@ def foo(
 
     for history_event in normalized_history:
         initial_effect = 0
+        start_at = parse(history_event['start_at'])
+        end_at = parse(history_event['end_at'])
+
+        insulin_end_datetime = end_at + datetime.timedelta(hours=insulin_action_curve)
+        absorption_rate = 180
+        absorption_end_datetime = end_at + datetime.timedelta(minutes=absorption_rate)
 
         for i, timestamp in enumerate(simulation_timestamps):
-            insulin_sensitivity = insulin_sensitivity_schedule.at(timestamp.time())['sensitivity']
-            start_at = parse(history_event['start_at'])
             t = (timestamp - start_at).total_seconds() / 60.0
 
+            # Cap the time used to determine the sensitivity so it doesn't fluctuate
+            # after completion
+            sensitivity_time = min(insulin_end_datetime, timestamp)
+            insulin_sensitivity = insulin_sensitivity_schedule.at(sensitivity_time.time())['sensitivity']
+
             if history_event['unit'] == Unit.grams:
-                carb_ratio = carb_ratio_schedule.at(timestamp.time())['ratio']
-                effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio)
+                # Cap the time used to determine the carb ratio to absorption end so it doesn't
+                # fluctuate after completion
+                ratio_time = min(absorption_end_datetime, timestamp)
+                carb_ratio = carb_ratio_schedule.at(ratio_time.time())['ratio']
+
+                effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio, absorption_rate)
                 apply_to = carb_effect
             elif history_event['unit'] == Unit.units:
                 effect = bolus_effect_at_datetime(history_event, t, insulin_sensitivity, insulin_action_curve)
