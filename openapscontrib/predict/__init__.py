@@ -123,10 +123,11 @@ class glucose(Use):
     def get_params(self, args):
         params = dict(**args.__dict__)
 
-        if params.get('settings') is not None:
-            del params['insulin_action_curve']
-        else:
-            del params['settings']
+        if params.get('settings') is None:
+            params.pop('settings', None)
+
+        if params.get('insulin_action_curve') is None:
+            params.pop('insulin_action_curve', None)
 
         if params.get('basal_dosing_end') is None:
             params.pop('basal_dosing_end', None)
