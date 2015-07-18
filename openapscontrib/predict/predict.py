@@ -143,6 +143,7 @@ def foo(
     insulin_sensitivity_schedule,
     carb_ratio_schedule,
     dt=5,
+    sensor_delay=10,
     basal_dosing_end=None
 ):
     assert len(normalized_glucose) > 0
@@ -217,6 +218,6 @@ def foo(
             apply_to[i] += effect
 
     return [(
-        timestamp.isoformat(),
+        (timestamp + datetime.timedelta(minutes=sensor_delay)).isoformat(),
         last_glucose_value + carb_effect[i] + insulin_effect[i]
     ) for i, timestamp in enumerate(simulation_timestamps)]

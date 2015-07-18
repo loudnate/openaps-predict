@@ -45,8 +45,8 @@ class FooTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertEqual(('2015-07-13T12:00:00', 150.0), glucose[0])
-        self.assertEqual(('2015-07-13T16:00:00', 110.0), glucose[-1])
+        self.assertEqual(('2015-07-13T12:10:00', 150.0), glucose[0])
+        self.assertEqual(('2015-07-13T16:10:00', 110.0), glucose[-1])
 
     def test_multiple_bolus(self):
         normalized_history = [
@@ -81,8 +81,8 @@ class FooTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertEqual(('2015-07-13T10:00:00', 150.0), glucose[0])
-        self.assertEqual(('2015-07-13T15:00:00', 70.0), glucose[-1])
+        self.assertEqual(('2015-07-13T10:10:00', 150.0), glucose[0])
+        self.assertEqual(('2015-07-13T15:10:00', 70.0), glucose[-1])
 
     def test_future_bolus(self):
         normalized_history = [
@@ -110,9 +110,9 @@ class FooTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertEqual(('2015-07-13T11:00:00', 150.0), glucose[0])
-        self.assertEqual(('2015-07-13T11:30:00', 150.0), glucose[6])
-        self.assertEqual(('2015-07-13T12:00:00', 150.0), glucose[12])
+        self.assertEqual(('2015-07-13T11:10:00', 150.0), glucose[0])
+        self.assertEqual(('2015-07-13T11:40:00', 150.0), glucose[6])
+        self.assertEqual(('2015-07-13T12:10:00', 150.0), glucose[12])
 
     def test_square_bolus(self):
         normalized_history = [
@@ -140,8 +140,8 @@ class FooTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertEqual(('2015-07-13T12:00:00', 150.0), glucose[0])
-        self.assertEqual('2015-07-13T17:00:00', glucose[-1][0])
+        self.assertEqual(('2015-07-13T12:10:00', 150.0), glucose[0])
+        self.assertEqual('2015-07-13T17:10:00', glucose[-1][0])
         self.assertAlmostEqual(110.0, glucose[-1][1], delta=2)
 
     def test_future_square_bolus(self):
@@ -170,9 +170,9 @@ class FooTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertEqual(('2015-07-13T11:00:00', 150.0), glucose[0])
-        self.assertEqual(('2015-07-13T11:30:00', 150.0), glucose[6])
-        self.assertEqual(('2015-07-13T12:00:00', 150.0), glucose[12])
+        self.assertEqual(('2015-07-13T11:10:00', 150.0), glucose[0])
+        self.assertEqual(('2015-07-13T11:40:00', 150.0), glucose[6])
+        self.assertEqual(('2015-07-13T12:10:00', 150.0), glucose[12])
 
     def test_carb_completion_with_ratio_change(self):
         normalized_history = [
@@ -200,7 +200,7 @@ class FooTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertEqual(('2015-07-15T18:30:00', 190.0), glucose[-1])
+        self.assertEqual(('2015-07-15T18:40:00', 190.0), glucose[-1])
 
     def test_basal_dosing_end(self):
         normalized_history = [
@@ -229,5 +229,5 @@ class FooTestCase(unittest.TestCase):
             basal_dosing_end=datetime(2015, 7, 17, 12, 30)
         )
 
-        self.assertEqual('2015-07-17T17:00:00', glucose[-1][0])
+        self.assertEqual('2015-07-17T17:10:00', glucose[-1][0])
         self.assertAlmostEqual(130, glucose[-1][1], delta=1)
