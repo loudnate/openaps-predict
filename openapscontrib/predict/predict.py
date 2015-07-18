@@ -142,7 +142,8 @@ def foo(
     insulin_action_curve,
     insulin_sensitivity_schedule,
     carb_ratio_schedule,
-    dt=5
+    dt=5,
+    basal_dosing_end=None
 ):
     assert len(normalized_glucose) > 0
 
@@ -198,6 +199,10 @@ def foo(
                 apply_to = insulin_effect
             elif history_event['unit'] == Unit.units_per_hour:
                 end_at = parse(history_event['end_at'])
+
+                if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
+                    end_at = basal_dosing_end
+
                 t1 = (end_at - start_at).total_seconds() / 60.0
 
                 effect = temp_basal_effect_at_datetime(history_event, t, 0, t1, insulin_sensitivity, insulin_action_curve)

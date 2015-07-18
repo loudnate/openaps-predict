@@ -81,35 +81,43 @@ class glucose(Use):
         """
         parser.add_argument(
             'normalized-history',
-            help='JSON-encoded history data, normalized by openapscontrib.mmhistorytools'
+            help='JSON-encoded history data file, normalized by openapscontrib.mmhistorytools'
         )
 
         parser.add_argument(
             'normalized-glucose',
-            help='JSON-encoded glucose data, normalized by openapscontrib.glucosetools'
+            help='JSON-encoded glucose data file, normalized by openapscontrib.glucosetools'
         )
 
         parser.add_argument(
             '--settings',
             nargs=argparse.OPTIONAL,
-            help='JSON-encoded pump settings, optional if --idur is set'
+            help='JSON-encoded pump settings file, optional if --idur is set'
         )
 
         parser.add_argument(
             '--insulin-action-curve', '--idur',
             nargs=argparse.OPTIONAL,
             type=float,
+            choices=range(3, 7),
             help='Insulin action curve, optional if --settings is set'
         )
 
         parser.add_argument(
             '--insulin-sensitivities', '--sensf',
-            help='JSON-encoded insulin sensitivities schedule'
+            help='JSON-encoded insulin sensitivities schedule file'
         )
 
         parser.add_argument(
             '--carb-ratios', '--cratio',
-            help='JSON-encoded carb'
+            help='JSON-encoded carb ratio schedule file'
+        )
+
+        parser.add_argument(
+            '--basal-dosing-end',
+            nargs=argparse.OPTIONAL,
+            help='The timestamp at which temp basal dosing should be assumed to end, '
+                 'as a JSON-encoded pump clock file'
         )
 
     def get_params(self, args):
@@ -119,6 +127,13 @@ class glucose(Use):
             del params['insulin_action_curve']
         else:
             del params['settings']
+
+        if params.get('basal_dosing_end') is None:
+            params.pop('basal_dosing_end', None)
+
+        params.pop('use', None)
+        params.pop('action', None)
+        params.pop('report', None)
 
         return params
 
@@ -133,14 +148,15 @@ class glucose(Use):
         args = (
             _json_file(params.pop('normalized-history')),
             _json_file(params.pop('normalized-glucose')),
-            params.pop('insulin_action_curve', None) or _opt_json_file(params.pop('settings', ''))['insulin_action_curve'],
+            params.pop('insulin_action_curve', None) or
+            _opt_json_file(params.pop('settings', ''))['insulin_action_curve'],
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities']),
             Schedule(_json_file(params['carb_ratios'])['schedule']),
         )
 
-        return args, dict()
+        return args, dict(basal_dosing_end=_opt_date(_opt_json_file(params.get('basal_dosing_end'))))
 
     def main(self, args, app):
-        args, _ = self.get_program(self.get_params(args))
+        args, kwargs = self.get_program(self.get_params(args))
 
-        return foo(*args)
+        return foo(*args, **kwargs)

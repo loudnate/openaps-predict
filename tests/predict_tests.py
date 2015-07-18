@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import os
 import unittest
@@ -140,7 +141,8 @@ class FooTestCase(unittest.TestCase):
         )
 
         self.assertEqual(('2015-07-13T12:00:00', 150.0), glucose[0])
-        self.assertEqual(('2015-07-13T17:00:00', 110.0), glucose[-1])
+        self.assertEqual('2015-07-13T17:00:00', glucose[-1][0])
+        self.assertAlmostEqual(110.0, glucose[-1][1], delta=2)
 
     def test_future_square_bolus(self):
         normalized_history = [
@@ -199,3 +201,33 @@ class FooTestCase(unittest.TestCase):
         )
 
         self.assertEqual(('2015-07-15T18:30:00', 190.0), glucose[-1])
+
+    def test_basal_dosing_end(self):
+        normalized_history = [
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-17T12:00:00",
+                "end_at": "2015-07-17T13:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            }
+        ]
+
+        normalized_glucose = [
+            {
+                "date": "2015-07-17T12:00:00",
+                "sgv": 150
+            }
+        ]
+
+        glucose = foo(
+            normalized_history,
+            normalized_glucose,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities']),
+            Schedule(self.carb_ratios['schedule']),
+            basal_dosing_end=datetime(2015, 7, 17, 12, 30)
+        )
+
+        self.assertEqual('2015-07-17T17:00:00', glucose[-1][0])
+        self.assertAlmostEqual(130, glucose[-1][1], delta=1)
