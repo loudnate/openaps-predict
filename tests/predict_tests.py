@@ -231,3 +231,50 @@ class FooTestCase(unittest.TestCase):
 
         self.assertEqual('2015-07-17T17:10:00', glucose[-1][0])
         self.assertAlmostEqual(130, glucose[-1][1], delta=1)
+
+    def test_no_input_history(self):
+        normalized_history = []
+
+        normalized_glucose = [
+            {
+                "date": "2015-07-17T12:00:00",
+                "sgv": 150
+            }
+        ]
+
+        glucose = foo(
+            normalized_history,
+            normalized_glucose,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities']),
+            Schedule(self.carb_ratios['schedule']),
+            basal_dosing_end=datetime(2015, 7, 17, 12, 30)
+        )
+
+        self.assertEqual('2015-07-17T16:10:00', glucose[-1][0])
+        self.assertEqual(150, glucose[-1][1])
+
+    def test_no_input_glucose(self):
+        normalized_history = [
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-17T12:00:00",
+                "end_at": "2015-07-17T13:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            }
+        ]
+
+        normalized_glucose = [
+        ]
+
+        glucose = foo(
+            normalized_history,
+            normalized_glucose,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities']),
+            Schedule(self.carb_ratios['schedule']),
+            basal_dosing_end=datetime(2015, 7, 17, 12, 30)
+        )
+
+        self.assertListEqual([], glucose)

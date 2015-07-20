@@ -146,7 +146,8 @@ def foo(
     sensor_delay=10,
     basal_dosing_end=None
 ):
-    assert len(normalized_glucose) > 0
+    if len(normalized_glucose) == 0:
+        return []
 
     last_glucose_value = normalized_glucose[0].get('sgv') or normalized_glucose[0].get('amount')
     last_glucose_datetime = parse(normalized_glucose[0]['date'])
