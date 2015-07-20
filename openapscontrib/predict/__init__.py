@@ -69,6 +69,7 @@ def _opt_json_file(filename):
         return _json_file(filename)
 
 
+# noinspection PyPep8Naming
 class glucose(Use):
     """Predict glucose
 
@@ -148,7 +149,7 @@ class glucose(Use):
         """
         args = (
             _json_file(params['normalized-history']),
-            _json_file(params.get['normalized-glucose']),
+            _json_file(params['normalized-glucose']),
             params.get('insulin_action_curve', None) or
             _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities']),
