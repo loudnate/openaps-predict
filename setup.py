@@ -13,7 +13,7 @@ exec(open('openapscontrib/predict/version.py').read())
 setup(
     name='openapscontrib.predict',
     version=__version__,
-    url='http://github.com/loudnate/openaps-predict',
+    url='https://github.com/loudnate/openaps-predict',
     download_url='http://pypi.python.org/pypi/openapscontrib.predict',
     license='MIT',
     author='Nathan Racklyeft',
