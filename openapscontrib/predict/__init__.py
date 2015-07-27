@@ -12,7 +12,7 @@ import json
 from openaps.uses.use import Use
 
 from predict import Schedule
-from predict import foo
+from predict import future_glucose
 
 
 # set_config is needed by openaps for all vendors.
@@ -161,4 +161,4 @@ class glucose(Use):
     def main(self, args, app):
         args, kwargs = self.get_program(self.get_params(args))
 
-        return foo(*args, **kwargs)
+        return future_glucose(*args, **kwargs)

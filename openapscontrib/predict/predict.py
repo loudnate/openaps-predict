@@ -1,6 +1,7 @@
 import datetime
 from dateutil.parser import parse
 import math
+
 from openapscontrib.mmhistorytools.models import Unit
 
 
@@ -136,7 +137,7 @@ def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin
     return -event['amount'] / 60.0 * insulin_sensitivity * ((t1 - t0) - int_iob)
 
 
-def foo(
+def future_glucose(
     normalized_history,
     normalized_glucose,
     insulin_action_curve,
@@ -218,7 +219,7 @@ def foo(
             effect -= initial_effect
             apply_to[i] += effect
 
-    return [(
-        (timestamp + datetime.timedelta(minutes=sensor_delay)).isoformat(),
-        last_glucose_value + carb_effect[i] + insulin_effect[i]
-    ) for i, timestamp in enumerate(simulation_timestamps)]
+    return [{
+        'date': (timestamp + datetime.timedelta(minutes=sensor_delay)).isoformat(),
+        'glucose': last_glucose_value + carb_effect[i] + insulin_effect[i]
+    } for i, timestamp in enumerate(simulation_timestamps)]
