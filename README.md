@@ -10,7 +10,7 @@ This tool is highly experimental and intended for education, not intended for th
 ### Installing from pypi
 
 ```bash
-$ sudo easy_install openapscontrib.mmhistorytools
+$ sudo easy_install openapscontrib.predict
 ```
 ### Installing from source for development
 Clone the repository and link via setuptools:
@@ -35,12 +35,12 @@ optional arguments:
 
 ## Device predict:
   vendor openapscontrib.predict
-  
+
   predict - tools for predicting glucose trends
-  
-  
-  
-      
+
+
+
+
 
   USAGE       Usage Details
     glucose   Predict glucose
@@ -61,7 +61,7 @@ Predict glucose
 positional arguments:
   pump-history          JSON-encoded pump history data file, normalized by
                         openapscontrib.mmhistorytools
-  glucose               JSON-encoded glucose data file in 
+  glucose               JSON-encoded glucose data file in
                         reverse-chronological order
 
 optional arguments:
@@ -84,14 +84,14 @@ optional arguments:
 
 Add a report flow to predict future glucose from pump history, with and without future basal dosing:
 ```
-$ openaps report add predict_glucose.json JSON predict glucose \ 
+$ openaps report add predict_glucose.json JSON predict glucose \
         normalize_history.json \
 		recent_glucose.json \
 		--settings read_settings.json \
 		--insulin-sensitivities read_insulin_sensitivies.json \
 		--carb-ratios read_carb_ratios.json
 
-$ openaps report add predict_glucose_without_future_basal.json JSON predict glucose \ 
+$ openaps report add predict_glucose_without_future_basal.json JSON predict glucose \
         normalize_history.json \
 		recent_glucose.json \
 		--settings read_settings.json \
@@ -104,9 +104,9 @@ $ openaps report add predict_glucose_without_future_basal.json JSON predict gluc
 Contributions are welcome and encouraged in the form of bugs and pull requests.
 
 ### Testing
- 
+
 Unit tests can be run manually via setuptools. This is also handled by TravisCI after opening a pull request.
- 
+
 ```bash
 $ python setup.py test
 ```
