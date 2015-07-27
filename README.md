@@ -7,6 +7,11 @@ An [openaps](https://github.com/openaps/openaps) plugin for predicting glucose t
 This tool is highly experimental and intended for education, not intended for therapy.
 
 ## Getting started
+### Installing from pypi
+
+```bash
+$ sudo easy_install openapscontrib.mmhistorytools
+```
 ### Installing from source for development
 Clone the repository and link via setuptools:
 ```bash
