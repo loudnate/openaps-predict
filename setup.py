@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
-long_description ='''openaps predict plugin
+long_description = '''openaps predict plugin
 ==============================
 This package is a vendor plugin for openaps that provides tools for predicting glucose trends.
 '''
 
-requires = ['scipy', 'openapscontrib.mmhistorytools']
+requires = ['python-dateutil', 'openapscontrib.mmhistorytools']
 
 __version__ = None
 exec(open('openapscontrib/predict/version.py').read())
