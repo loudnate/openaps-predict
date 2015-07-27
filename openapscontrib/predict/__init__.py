@@ -81,13 +81,13 @@ class glucose(Use):
         in via openaps-report.
         """
         parser.add_argument(
-            'normalized-history',
-            help='JSON-encoded history data file, normalized by openapscontrib.mmhistorytools'
+            'pump-history',
+            help='JSON-encoded pump history data file, normalized by openapscontrib.mmhistorytools'
         )
 
         parser.add_argument(
-            'normalized-glucose',
-            help='JSON-encoded glucose data file, normalized by openapscontrib.glucosetools'
+            'glucose',
+            help='JSON-encoded glucose data file in reverse-chronological order'
         )
 
         parser.add_argument(
@@ -148,8 +148,8 @@ class glucose(Use):
         :rtype: tuple(list, dict)
         """
         args = (
-            _json_file(params['normalized-history']),
-            _json_file(params['normalized-glucose']),
+            _json_file(params['pump-history']),
+            _json_file(params['glucose']),
             params.get('insulin_action_curve', None) or
             _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities']),

@@ -139,7 +139,7 @@ def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin
 
 def future_glucose(
     normalized_history,
-    normalized_glucose,
+    recent_glucose,
     insulin_action_curve,
     insulin_sensitivity_schedule,
     carb_ratio_schedule,
@@ -147,11 +147,12 @@ def future_glucose(
     sensor_delay=10,
     basal_dosing_end=None
 ):
-    if len(normalized_glucose) == 0:
+    if len(recent_glucose) == 0:
         return []
 
-    last_glucose_value = normalized_glucose[0].get('sgv') or normalized_glucose[0].get('amount')
-    last_glucose_datetime = parse(normalized_glucose[0]['date'])
+    last_glucose_entry = recent_glucose[0]
+    last_glucose_value = last_glucose_entry.get('sgv') or last_glucose_entry.get('amount') or last_glucose_entry['glucose']
+    last_glucose_datetime = parse(last_glucose_entry.get('date') or last_glucose_entry['display_time'])
 
     # Determine our simulation time.
     simulation_start = last_glucose_datetime
