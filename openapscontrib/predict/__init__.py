@@ -6,13 +6,16 @@ predict - tools for predicting glucose trends
 from .version import __version__
 
 import argparse
+from datetime import datetime, timedelta
 from dateutil.parser import parse
 import json
+import os
 
 from openaps.uses.use import Use
 
 from predict import Schedule
 from predict import future_glucose
+from predict import glucose_data_tuple
 
 
 # set_config is needed by openaps for all vendors.
@@ -147,9 +150,18 @@ class glucose(Use):
         :return:
         :rtype: tuple(list, dict)
         """
+        pump_history_file_time = datetime.fromtimestamp(os.path.getmtime(params['pump-history']))
+        assert datetime.now() - pump_history_file_time < timedelta(minutes=5), 'History data is more than 5 minutes old'
+
+        recent_glucose = _json_file(params['glucose'])
+        glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['clock']))
+        last_glucose_datetime, _ = glucose_data_tuple(recent_glucose[0])
+        assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
+            'Glucose data is more than 15 minutes old'
+
         args = (
             _json_file(params['pump-history']),
-            _json_file(params['glucose']),
+            recent_glucose,
             params.get('insulin_action_curve', None) or
             _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities']),

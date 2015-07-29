@@ -34,6 +34,13 @@ class Schedule(object):
         return result
 
 
+def glucose_data_tuple(glucose_entry):
+    return (
+        parse(glucose_entry.get('date') or glucose_entry['display_time']),
+        glucose_entry.get('sgv') or glucose_entry.get('amount') or glucose_entry['glucose']
+    )
+
+
 def carb_effect_curve(t, absorption_time):
     """Returns the fraction of total carbohydrate effect with a given absorption time on blood
     glucose at the specified number of minutes after eating.
@@ -150,9 +157,7 @@ def future_glucose(
     if len(recent_glucose) == 0:
         return []
 
-    last_glucose_entry = recent_glucose[0]
-    last_glucose_value = last_glucose_entry.get('sgv') or last_glucose_entry.get('amount') or last_glucose_entry['glucose']
-    last_glucose_datetime = parse(last_glucose_entry.get('date') or last_glucose_entry['display_time'])
+    last_glucose_datetime, last_glucose_value = glucose_data_tuple(recent_glucose[0])
 
     # Determine our simulation time.
     simulation_start = last_glucose_datetime
