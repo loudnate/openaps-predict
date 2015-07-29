@@ -154,7 +154,7 @@ class glucose(Use):
         assert datetime.now() - pump_history_file_time < timedelta(minutes=5), 'History data is more than 5 minutes old'
 
         recent_glucose = _json_file(params['glucose'])
-        glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['clock']))
+        glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
         last_glucose_datetime, _ = glucose_data_tuple(recent_glucose[0])
         assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
             'Glucose data is more than 15 minutes old'
