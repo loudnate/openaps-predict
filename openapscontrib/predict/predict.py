@@ -50,12 +50,16 @@ def carb_effect_curve(t, absorption_time):
     :return: A percentage of the initial carb intake, from 0 to 1
     :rtype: float
     """
-    if t <= 0:
+
+    # time delay between carb consumption and body/sensor reaction
+    sensor_delay = 10
+
+    if t <= sensor_delay:
         return 0.0
-    elif t <= absorption_time / 2.0:
-        return 2.0 / (absorption_time ** 2) * (t ** 2)
-    elif t < absorption_time:
-        return -1.0 + 4.0 / absorption_time * (t - t ** 2 / (2.0 * absorption_time))
+    elif t <= absorption_time / 2.0 + sensor_delay:
+        return 2.0 / (absorption_time ** 2) * ((t - sensor_delay) ** 2)
+    elif t < absorption_time + sensor_delay:
+        return -1.0 + 4.0 / absorption_time * ((t-sensor_delay) - (t - sensor_delay) ** 2 / (2.0 * absorption_time))
     else:
         return 1.0
 
@@ -77,18 +81,25 @@ def walsh_iob_curve(t, insulin_action_duration):
     """
     assert insulin_action_duration in (3 * 60, 4 * 60, 5 * 60, 6 * 60)
     iob = 0
+    
+    # time delay between insulin delivery and body/sensor reaction
+    sensor_delay = 10	
 
-    if t >= insulin_action_duration:
+    if t >= insulin_action_duration + sensor_delay:
         iob = 0.0
-    elif t <= 0:
+    elif t <= sensor_delay:
         iob = 1.0
     elif insulin_action_duration == 3 * 60:
+        t -= sensor_delay
         iob = -3.2030e-9 * (t**4) + 1.354e-6 * (t**3) - 1.759e-4 * (t**2) + 9.255e-4 * t + 0.99951
     elif insulin_action_duration == 4 * 60:
+	t -= sensor_delay
         iob = -3.310e-10 * (t**4) + 2.530e-7 * (t**3) - 5.510e-5 * (t**2) - 9.086e-4 * t + 0.99950
     elif insulin_action_duration == 5 * 60:
+        t -= sensor_delay
         iob = -2.950e-10 * (t**4) + 2.320e-7 * (t**3) - 5.550e-5 * (t**2) + 4.490e-4 * t + 0.99300
     elif insulin_action_duration == 6 * 60:
+        t -= sensor_delay
         iob = -1.493e-10 * (t**4) + 1.413e-7 * (t**3) - 4.095e-5 * (t**2) + 6.365e-4 * t + 0.99700
 
     return iob
@@ -221,6 +232,6 @@ def future_glucose(
             apply_to[i] += effect
 
     return [{
-        'date': (timestamp + datetime.timedelta(minutes=sensor_delay)).isoformat(),
+        'date': timestamp.isoformat(),
         'glucose': last_glucose_value + carb_effect[i] + insulin_effect[i]
     } for i, timestamp in enumerate(simulation_timestamps)]
