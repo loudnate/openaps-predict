@@ -105,7 +105,7 @@ def walsh_iob_curve(t, insulin_action_duration, sensor_delay):
     return iob
 
 
-def integrate_iob(t0, t1, insulin_action_duration, t):
+def integrate_iob(t0, t1, insulin_action_duration, t, sensor_delay):
     """Integrates IOB using Simpson's rule for spread-out (basal-like) doses
 
     TODO: Clean this up and use scipy.integrate.simps
@@ -143,7 +143,7 @@ def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio, absorptio
 
 
 def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin_action_duration, sensor_delay):
-    int_iob = integrate_iob(t0, t1, insulin_action_duration * 60.0, t)
+    int_iob = integrate_iob(t0, t1, insulin_action_duration * 60.0, t, sensor_delay)
 
     return -event['amount'] / 60.0 * insulin_sensitivity * ((t1 - t0) - int_iob)
 
