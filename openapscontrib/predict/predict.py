@@ -34,7 +34,7 @@ class Schedule(object):
         return result
 
 
-def carb_effect_curve(t, absorption_time):
+def carb_effect_curve(t, absorption_time, sensor_delay):
     """Returns the fraction of total carbohydrate effect with a given absorption time on blood
     glucose at the specified number of minutes after eating.
 
@@ -52,7 +52,7 @@ def carb_effect_curve(t, absorption_time):
     """
 
     # time delay between carb consumption and body/sensor reaction
-    sensor_delay = 10
+    # sensor_delay = 10
 
     if t <= sensor_delay:
         return 0.0
@@ -64,7 +64,7 @@ def carb_effect_curve(t, absorption_time):
         return 1.0
 
 
-def walsh_iob_curve(t, insulin_action_duration):
+def walsh_iob_curve(t, insulin_action_duration, sensor_delay):
     """Returns the fraction of a single insulin dosage remaining at the specified number of minutes
     after delivery; also known as Insulin On Board (IOB).
 
@@ -83,7 +83,7 @@ def walsh_iob_curve(t, insulin_action_duration):
     iob = 0
     
     # time delay between insulin delivery and body/sensor reaction
-    sensor_delay = 10	
+    # sensor_delay = 10	
 
     if t >= insulin_action_duration + sensor_delay:
         iob = 0.0
@@ -105,7 +105,7 @@ def walsh_iob_curve(t, insulin_action_duration):
     return iob
 
 
-def integrate_iob(t0, t1, insulin_action_duration, t):
+def integrate_iob(t0, t1, insulin_action_duration, t, sensor_delay):
     """Integrates IOB using Simpson's rule for spread-out (basal-like) doses
 
     TODO: Clean this up and use scipy.integrate.simps
@@ -125,25 +125,25 @@ def integrate_iob(t0, t1, insulin_action_duration, t):
 
     # initialize with first and last terms of simpson series
     dx = (t1 - t0) / nn
-    integral = walsh_iob_curve(t - t0, insulin_action_duration) + walsh_iob_curve(t - t1, insulin_action_duration)
+    integral = walsh_iob_curve(t - t0, insulin_action_duration, sensor_delay) + walsh_iob_curve(t - t1, insulin_action_duration, sensor_delay)
 
     for i in range(1, nn - 1, 2):
-        integral = integral + 4 * walsh_iob_curve(t - (t0 + i * dx), insulin_action_duration) + 2 * walsh_iob_curve(t - (t0 + (i + 1) * dx), insulin_action_duration)
+        integral = integral + 4 * walsh_iob_curve(t - (t0 + i * dx), insulin_action_duration, sensor_delay) + 2 * walsh_iob_curve(t - (t0 + (i + 1) * dx), insulin_action_duration, sensor_delay)
 
     integral = integral * dx / 3.0
     return integral
 
 
-def bolus_effect_at_datetime(event, t, insulin_sensitivity, insulin_action_duration):
-    return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration * 60.0))
+def bolus_effect_at_datetime(event, t, insulin_sensitivity, insulin_action_duration, sensor_delay):
+    return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration * 60.0, sensor_delay))
 
 
-def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio, absorption_rate):
-    return insulin_sensitivity / carb_ratio * event['amount'] * carb_effect_curve(t, absorption_rate)
+def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio, absorption_rate, sensor_delay):
+    return insulin_sensitivity / carb_ratio * event['amount'] * carb_effect_curve(t, absorption_rate, sensor_delay)
 
 
-def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin_action_duration):
-    int_iob = integrate_iob(t0, t1, insulin_action_duration * 60.0, t)
+def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin_action_duration, sensor_delay):
+    int_iob = integrate_iob(t0, t1, insulin_action_duration * 60.0, t, sensor_delay)
 
     return -event['amount'] / 60.0 * insulin_sensitivity * ((t1 - t0) - int_iob)
 
@@ -174,7 +174,7 @@ def future_glucose(
         last_history_datetime = parse(last_history_event['end_at'])
         simulation_end = max(simulation_end, last_history_datetime)
 
-    simulation_end += datetime.timedelta(hours=insulin_action_curve)
+    simulation_end += datetime.timedelta(minutes=(insulin_action_curve*60+sensor_delay))
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
@@ -207,10 +207,10 @@ def future_glucose(
                 ratio_time = min(absorption_end_datetime, timestamp)
                 carb_ratio = carb_ratio_schedule.at(ratio_time.time())['ratio']
 
-                effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio, absorption_rate)
+                effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio, absorption_rate, sensor_delay)
                 apply_to = carb_effect
             elif history_event['unit'] == Unit.units:
-                effect = bolus_effect_at_datetime(history_event, t, insulin_sensitivity, insulin_action_curve)
+                effect = bolus_effect_at_datetime(history_event, t, insulin_sensitivity, insulin_action_curve, sensor_delay)
                 apply_to = insulin_effect
             elif history_event['unit'] == Unit.units_per_hour:
                 end_at = parse(history_event['end_at'])
@@ -220,7 +220,7 @@ def future_glucose(
 
                 t1 = (end_at - start_at).total_seconds() / 60.0
 
-                effect = temp_basal_effect_at_datetime(history_event, t, 0, t1, insulin_sensitivity, insulin_action_curve)
+                effect = temp_basal_effect_at_datetime(history_event, t, 0, t1, insulin_sensitivity, insulin_action_curve, sensor_delay)
                 apply_to = insulin_effect
             else:
                 raise ValueError('Unknown event %s', history_event)
