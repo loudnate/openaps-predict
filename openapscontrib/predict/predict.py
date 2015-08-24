@@ -174,7 +174,7 @@ def future_glucose(
         last_history_datetime = parse(last_history_event['end_at'])
         simulation_end = max(simulation_end, last_history_datetime)
 
-    simulation_end += datetime.timedelta(hours=insulin_action_curve)
+    simulation_end += datetime.timedelta(minutes=(insulin_action_curve*60+sensor_delay))
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
