@@ -34,6 +34,13 @@ class Schedule(object):
         return result
 
 
+def glucose_data_tuple(glucose_entry):
+    return (
+        parse(glucose_entry.get('date') or glucose_entry['display_time']),
+        glucose_entry.get('sgv') or glucose_entry.get('amount') or glucose_entry['glucose']
+    )
+
+
 def carb_effect_curve(t, absorption_time):
     """Returns the fraction of total carbohydrate effect with a given absorption time on blood
     glucose at the specified number of minutes after eating.
@@ -50,6 +57,7 @@ def carb_effect_curve(t, absorption_time):
     :return: A percentage of the initial carb intake, from 0 to 1
     :rtype: float
     """
+
     if t <= 0:
         return 0.0
     elif t <= absorption_time / 2.0:
@@ -150,9 +158,7 @@ def future_glucose(
     if len(recent_glucose) == 0:
         return []
 
-    last_glucose_entry = recent_glucose[0]
-    last_glucose_value = last_glucose_entry.get('sgv') or last_glucose_entry.get('amount') or last_glucose_entry['glucose']
-    last_glucose_datetime = parse(last_glucose_entry.get('date') or last_glucose_entry['display_time'])
+    last_glucose_datetime, last_glucose_value = glucose_data_tuple(recent_glucose[0])
 
     # Determine our simulation time.
     simulation_start = last_glucose_datetime
@@ -163,7 +169,7 @@ def future_glucose(
         last_history_datetime = parse(last_history_event['end_at'])
         simulation_end = max(simulation_end, last_history_datetime)
 
-    simulation_end += datetime.timedelta(hours=insulin_action_curve)
+    simulation_end += datetime.timedelta(minutes=(insulin_action_curve * 60 + sensor_delay))
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
@@ -183,7 +189,7 @@ def future_glucose(
         absorption_end_datetime = end_at + datetime.timedelta(minutes=absorption_rate)
 
         for i, timestamp in enumerate(simulation_timestamps):
-            t = (timestamp - start_at).total_seconds() / 60.0
+            t = (timestamp - start_at).total_seconds() / 60.0 - sensor_delay
 
             # Cap the time used to determine the sensitivity so it doesn't fluctuate
             # after completion
@@ -221,6 +227,6 @@ def future_glucose(
             apply_to[i] += effect
 
     return [{
-        'date': (timestamp + datetime.timedelta(minutes=sensor_delay)).isoformat(),
+        'date': timestamp.isoformat(),
         'glucose': last_glucose_value + carb_effect[i] + insulin_effect[i]
     } for i, timestamp in enumerate(simulation_timestamps)]
