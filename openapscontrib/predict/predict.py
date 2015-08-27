@@ -50,6 +50,7 @@ def carb_effect_curve(t, absorption_time):
     :return: A percentage of the initial carb intake, from 0 to 1
     :rtype: float
     """
+
     if t <= 0:
         return 0.0
     elif t <= absorption_time / 2.0:
@@ -163,7 +164,7 @@ def future_glucose(
         last_history_datetime = parse(last_history_event['end_at'])
         simulation_end = max(simulation_end, last_history_datetime)
 
-    simulation_end += datetime.timedelta(hours=insulin_action_curve)
+    simulation_end += datetime.timedelta(minutes=(insulin_action_curve * 60 + sensor_delay))
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
@@ -183,7 +184,7 @@ def future_glucose(
         absorption_end_datetime = end_at + datetime.timedelta(minutes=absorption_rate)
 
         for i, timestamp in enumerate(simulation_timestamps):
-            t = (timestamp - start_at).total_seconds() / 60.0
+            t = (timestamp - start_at).total_seconds() / 60.0 - sensor_delay
 
             # Cap the time used to determine the sensitivity so it doesn't fluctuate
             # after completion
@@ -221,6 +222,6 @@ def future_glucose(
             apply_to[i] += effect
 
     return [{
-        'date': (timestamp + datetime.timedelta(minutes=sensor_delay)).isoformat(),
+        'date': timestamp.isoformat(),
         'glucose': last_glucose_value + carb_effect[i] + insulin_effect[i]
     } for i, timestamp in enumerate(simulation_timestamps)]

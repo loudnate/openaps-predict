@@ -45,7 +45,7 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T12:10:00', 'glucose': 150.0}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
         self.assertDictEqual({'date': '2015-07-13T16:10:00', 'glucose': 110.0}, glucose[-1])
 
     def test_multiple_bolus(self):
@@ -81,7 +81,7 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T10:10:00', 'glucose': 150.0}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T10:00:00', 'glucose': 150.0}, glucose[0])
         self.assertDictEqual({'date': '2015-07-13T15:10:00', 'glucose': 70.0}, glucose[-1])
 
     def test_future_bolus(self):
@@ -110,9 +110,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T11:10:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T11:40:00', 'glucose': 150.0}, glucose[6])
-        self.assertDictEqual({'date': '2015-07-13T12:10:00', 'glucose': 150.0}, glucose[12])
+        self.assertDictEqual({'date': '2015-07-13T11:00:00', 'glucose': 150.0}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T11:30:00', 'glucose': 150.0}, glucose[6])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[12])
 
     def test_square_bolus(self):
         normalized_history = [
@@ -140,7 +140,7 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T12:10:00', 'glucose': 150.0}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
         self.assertEqual('2015-07-13T17:10:00', glucose[-1]['date'])
         self.assertAlmostEqual(110.0, glucose[-1]['glucose'], delta=2)
 
@@ -170,9 +170,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T11:10:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T11:40:00', 'glucose': 150.0}, glucose[6])
-        self.assertDictEqual({'date': '2015-07-13T12:10:00', 'glucose': 150.0}, glucose[12])
+        self.assertDictEqual({'date': '2015-07-13T11:00:00', 'glucose': 150.0}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T11:30:00', 'glucose': 150.0}, glucose[6])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[12])
 
     def test_carb_completion_with_ratio_change(self):
         normalized_history = [
