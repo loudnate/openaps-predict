@@ -217,6 +217,9 @@ def future_glucose(
 
                 effect = temp_basal_effect_at_datetime(history_event, t, 0, t1, insulin_sensitivity, insulin_action_curve)
                 apply_to = insulin_effect
+            elif history_event['unit'] == Unit.event:
+                # effect added through use of exercise marker (JournalEntryExerciseMarker) in x23 models
+                pass
             else:
                 raise ValueError('Unknown event %s', history_event)
 
