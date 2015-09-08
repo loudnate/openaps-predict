@@ -282,9 +282,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
     def test_single_bolus_with_excercise_marker(self):
         normalized_history = [
             {
-                "start_at": "2015-07-13T12:23:08", 
+                "start_at": "2015-07-13T12:05:00", 
                 "description": "JournalEntryExerciseMarker", 
-                "end_at": "2015-07-13T12:23:08", 
+                "end_at": "2015-07-13T12:05:00", 
                 "amount": 1, 
                 "type": "Exercise", 
                 "unit": "event"
@@ -314,7 +314,7 @@ class FutureGlucoseTestCase(unittest.TestCase):
         )
 
         self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T16:10:00', 'glucose': 110.0}, glucose[-1])
+        self.assertDictEqual({'date': '2015-07-13T16:15:00', 'glucose': 110.0}, glucose[-1])
 
     def test_fake_unit(self):
         normalized_history = [
