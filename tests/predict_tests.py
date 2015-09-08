@@ -282,9 +282,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
     def test_single_bolus_with_excercise_marker(self):
         normalized_history = [
             {
-                "start_at": "2015-09-07T22:23:08", 
+                "start_at": "2015-07-13T12:23:08", 
                 "description": "JournalEntryExerciseMarker", 
-                "end_at": "2015-09-07T22:23:08", 
+                "end_at": "2015-07-13T12:23:08", 
                 "amount": 1, 
                 "type": "Exercise", 
                 "unit": "event"
