@@ -2,7 +2,7 @@ import datetime
 from dateutil.parser import parse
 import math
 
-from openapscontrib.mmhistorytools.models import Unit
+from models import Unit
 
 
 class Schedule(object):
