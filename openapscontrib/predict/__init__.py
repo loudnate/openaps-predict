@@ -100,7 +100,7 @@ class glucose(Use):
         )
 
         parser.add_argument(
-            '--insulin-action-curve', '--idur',
+            '--insulin-action-curve',
             nargs=argparse.OPTIONAL,
             type=float,
             choices=range(3, 7),
@@ -108,12 +108,12 @@ class glucose(Use):
         )
 
         parser.add_argument(
-            '--insulin-sensitivities', '--sensf',
+            '--insulin-sensitivities',
             help='JSON-encoded insulin sensitivities schedule file'
         )
 
         parser.add_argument(
-            '--carb-ratios', '--cratio',
+            '--carb-ratios',
             help='JSON-encoded carb ratio schedule file'
         )
 
