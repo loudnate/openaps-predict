@@ -278,3 +278,68 @@ class FutureGlucoseTestCase(unittest.TestCase):
         )
 
         self.assertListEqual([], glucose)
+
+    def test_single_bolus_with_excercise_marker(self):
+        normalized_history = [
+            {
+                "start_at": "2015-07-13T12:05:00", 
+                "description": "JournalEntryExerciseMarker", 
+                "end_at": "2015-07-13T12:05:00", 
+                "amount": 1, 
+                "type": "Exercise", 
+                "unit": "event"
+            },
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T12:00:00",
+                "end_at": "2015-07-13T12:00:00",
+                "amount": 1.0,
+                "unit": "U"
+            }
+        ]
+
+        normalized_glucose = [
+            {
+                "date": "2015-07-13T12:00:00",
+                "sgv": 150
+            }
+        ]
+
+        glucose = future_glucose(
+            normalized_history,
+            normalized_glucose,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities']),
+            Schedule(self.carb_ratios['schedule'])
+        )
+
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T16:15:00', 'glucose': 110.0}, glucose[-1])
+
+    def test_fake_unit(self):
+        normalized_history = [
+            {
+                "start_at": "2015-09-07T22:23:08", 
+                "description": "JournalEntryExerciseMarker", 
+                "end_at": "2015-09-07T22:23:08", 
+                "amount": 1, 
+                "type": "Exercise", 
+                "unit": "beer"
+            }
+        ]
+
+        normalized_glucose = [
+            {
+                "date": "2015-07-13T12:00:00",
+                "sgv": 150
+            }
+        ]
+
+        with self.assertRaises(ValueError):
+            glucose = future_glucose(
+            normalized_history,
+            normalized_glucose,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities']),
+            Schedule(self.carb_ratios['schedule'])
+            ) 
