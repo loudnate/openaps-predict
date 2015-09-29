@@ -44,7 +44,27 @@ def floor_datetime_at_minute_interval(timestamp, minute):
 
 
 def ceil_datetime_at_minute_interval(timestamp, minute):
-    return floor_datetime_at_minute_interval(timestamp + datetime.timedelta(minutes=minute), minute)
+    """
+    From http://stackoverflow.com/questions/13071384/python-ceil-a-datetime-to-next-quarter-of-an-hour
+
+    :param timestamp:
+    :type timestamp: datetime.datetime
+    :param minute:
+    :type minute: int
+    :return:
+    :rtype: datetime.datetime
+    """
+    # how many secs have passed this hour
+    nsecs = timestamp.minute * 60 + timestamp.second + timestamp.microsecond * 1e-6
+
+    # number of seconds to next minute mark
+    seconds = minute * 60
+    delta = (nsecs // seconds) * seconds + seconds - nsecs
+
+    if delta < seconds:
+        return timestamp + datetime.timedelta(seconds=delta)
+    else:
+        return timestamp
 
 
 def glucose_data_tuple(glucose_entry):
@@ -216,7 +236,7 @@ def calculate_iob(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = normalized_history[-1]
+    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
