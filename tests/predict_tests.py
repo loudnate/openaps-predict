@@ -3,7 +3,9 @@ import json
 import os
 import unittest
 
-from openapscontrib.predict.predict import future_glucose, Schedule
+from openapscontrib.predict.predict import Schedule
+from openapscontrib.predict.predict import calculate_iob
+from openapscontrib.predict.predict import future_glucose
 
 
 def get_file_at_path(path):
@@ -282,11 +284,11 @@ class FutureGlucoseTestCase(unittest.TestCase):
     def test_single_bolus_with_excercise_marker(self):
         normalized_history = [
             {
-                "start_at": "2015-07-13T12:05:00", 
-                "description": "JournalEntryExerciseMarker", 
-                "end_at": "2015-07-13T12:05:00", 
-                "amount": 1, 
-                "type": "Exercise", 
+                "start_at": "2015-07-13T12:05:00",
+                "description": "JournalEntryExerciseMarker",
+                "end_at": "2015-07-13T12:05:00",
+                "amount": 1,
+                "type": "Exercise",
                 "unit": "event"
             },
             {
@@ -319,11 +321,11 @@ class FutureGlucoseTestCase(unittest.TestCase):
     def test_fake_unit(self):
         normalized_history = [
             {
-                "start_at": "2015-09-07T22:23:08", 
-                "description": "JournalEntryExerciseMarker", 
-                "end_at": "2015-09-07T22:23:08", 
-                "amount": 1, 
-                "type": "Exercise", 
+                "start_at": "2015-09-07T22:23:08",
+                "description": "JournalEntryExerciseMarker",
+                "end_at": "2015-09-07T22:23:08",
+                "amount": 1,
+                "type": "Exercise",
                 "unit": "beer"
             }
         ]
@@ -342,4 +344,151 @@ class FutureGlucoseTestCase(unittest.TestCase):
             4,
             Schedule(self.insulin_sensitivities['sensitivities']),
             Schedule(self.carb_ratios['schedule'])
-            ) 
+            )
+
+
+class CalculateIOBTestCase(unittest.TestCase):
+    def test_single_bolus(self):
+        normalized_history = [
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T12:00:00",
+                "end_at": "2015-07-13T12:00:00",
+                "amount": 1.0,
+                "unit": "U"
+            }
+        ]
+
+        iob = calculate_iob(
+            normalized_history,
+            4
+        )
+
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
+        self.assertDictEqual({'date': '2015-07-13T12:10:00', 'amount': 1.0, 'unit': 'U'}, iob[2])
+        self.assertDictEqual({'date': '2015-07-13T16:10:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+
+    def test_multiple_bolus(self):
+        normalized_history = [
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T10:00:00",
+                "end_at": "2015-07-13T10:00:00",
+                "amount": 1.0,
+                "unit": "U"
+            },
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T11:00:00",
+                "end_at": "2015-07-13T11:00:00",
+                "amount": 1.0,
+                "unit": "U"
+            }
+        ]
+
+        iob = calculate_iob(
+            normalized_history,
+            4
+        )
+
+        self.assertDictEqual({'date': '2015-07-13T10:00:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
+        self.assertDictContainsSubset({'date': '2015-07-13T10:10:00'}, iob[2])
+        self.assertAlmostEqual(1.0, iob[2]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-07-13T11:00:00'}, iob[12])
+        self.assertAlmostEqual(0.84, iob[12]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-07-13T12:00:00'}, iob[24])
+        self.assertAlmostEqual(1.37, iob[24]['amount'], delta=0.01)
+        self.assertDictEqual({'date': '2015-07-13T15:10:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+
+    def test_square_bolus(self):
+        normalized_history = [
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T12:00:00",
+                "end_at": "2015-07-13T13:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            }
+        ]
+
+        iob = calculate_iob(
+            normalized_history,
+            4
+        )
+
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
+        self.assertDictEqual({'date': '2015-07-13T17:10:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+        self.assertEqual('2015-07-13T14:00:00', iob[24]['date'])
+        self.assertAlmostEqual(0.75, iob[24]['amount'], delta=0.01)
+
+    def test_carb_completion_with_ratio_change(self):
+        normalized_history = [
+            {
+                "type": "Meal",
+                "start_at": "2015-07-15T14:30:00",
+                "end_at": "2015-07-15T14:30:00",
+                "amount": 9,
+                "unit": "g"
+            }
+        ]
+
+        iob = calculate_iob(
+            normalized_history,
+            4
+        )
+
+        self.assertDictEqual({'date': '2015-07-15T14:30:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
+        self.assertDictEqual({'date': '2015-07-15T18:40:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+
+    def test_basal_dosing_end(self):
+        normalized_history = [
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-17T12:00:00",
+                "end_at": "2015-07-17T13:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            }
+        ]
+
+        iob = calculate_iob(
+            normalized_history,
+            4,
+            basal_dosing_end=datetime(2015, 7, 17, 12, 30)
+        )
+
+        self.assertDictEqual({'date': '2015-07-17T17:10:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+        self.assertDictEqual({'date': '2015-07-17T16:40:00', 'amount': 0.0, 'unit': 'U'}, iob[-7])
+        self.assertDictContainsSubset({'date': '2015-07-17T12:40:00', 'unit': 'U'}, iob[8])
+        self.assertAlmostEqual(0.56, iob[8]['amount'], delta=0.01)
+
+    def test_no_input_history(self):
+        normalized_history = []
+
+        iob = calculate_iob(
+            normalized_history,
+            4,
+            basal_dosing_end=datetime(2015, 7, 17, 12, 30)
+        )
+
+        self.assertListEqual([], iob)
+
+    def test_fake_unit(self):
+        normalized_history = [
+            {
+                "start_at": "2015-09-07T22:23:08",
+                "description": "JournalEntryExerciseMarker",
+                "end_at": "2015-09-07T22:23:08",
+                "amount": 1,
+                "type": "Exercise",
+                "unit": "beer"
+            }
+        ]
+
+        iob = calculate_iob(
+            normalized_history,
+            4
+        )
+
+        self.assertDictEqual({'date': '2015-09-07T22:23:08', 'amount': 0.0, 'unit': 'U'}, iob[0])
+        self.assertDictEqual({'date': '2015-09-08T02:33:08', 'amount': 0.0, 'unit': 'U'}, iob[-1])

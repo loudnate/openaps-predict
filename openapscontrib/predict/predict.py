@@ -1,5 +1,6 @@
 import datetime
 from dateutil.parser import parse
+from operator import add
 import math
 
 from models import Unit
@@ -125,13 +126,46 @@ def integrate_iob(t0, t1, insulin_action_duration, t):
     integral = walsh_iob_curve(t - t0, insulin_action_duration) + walsh_iob_curve(t - t1, insulin_action_duration)
 
     for i in range(1, nn - 1, 2):
-        integral = integral + 4 * walsh_iob_curve(t - (t0 + i * dx), insulin_action_duration) + 2 * walsh_iob_curve(t - (t0 + (i + 1) * dx), insulin_action_duration)
+        integral += 4 * walsh_iob_curve(t - (t0 + i * dx), insulin_action_duration) + 2 * walsh_iob_curve(t - (t0 + (i + 1) * dx), insulin_action_duration)
 
-    integral = integral * dx / 3.0
-    return integral
+    return integral * dx / 3.0
 
 
-def bolus_effect_at_datetime(event, t, insulin_sensitivity, insulin_action_duration):
+def sum_iob(t0, t1, insulin_action_duration, t, dt):
+    """Sums the percent IOB activity at a given time for a temp basal dose
+
+    :param t0: The start time in minutes of the dose
+    :type t0: Int
+    :param t1: The end time in minutes of the dose
+    :type t1: Int
+    :param insulin_action_duration: The duration of insulin action (DIA) of the patient, in minutes
+    :type insulin_action_duration: Int
+    :param t: The current time in minutes
+    :type t: float
+    :param dt: The segment size over which to sum
+    :return: The sum of IOB at time t, in percent
+    """
+    return reduce(
+        add,
+        [walsh_iob_curve(t - i, insulin_action_duration) for i in range(t0, t1 + dt, dt) if t - i >= 0],
+        0
+    )
+
+
+def cumulative_bolus_effect_at_time(event, t, insulin_sensitivity, insulin_action_duration):
+    """
+
+    :param event: The bolus history event, describing a value in Units of insulin
+    :type event: dict
+    :param t: The time in minutes from the beginning of the dose
+    :type t: Int
+    :param insulin_sensitivity: The insulin sensitivity at time t, in mg/dL/U
+    :type insulin_sensitivity: float
+    :param insulin_action_duration: The duration of insulin action at time t, in hours
+    :type insulin_action_duration: Int
+    :return: The cumulative effect of the bolus on blood glucose at time t, in mg/dL
+    :rtype: float
+    """
     return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration * 60.0))
 
 
@@ -139,10 +173,81 @@ def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio, absorptio
     return insulin_sensitivity / carb_ratio * event['amount'] * carb_effect_curve(t, absorption_rate)
 
 
-def temp_basal_effect_at_datetime(event, t, t0, t1, insulin_sensitivity, insulin_action_duration):
+def cumulative_temp_basal_effect_at_time(event, t, t0, t1, insulin_sensitivity, insulin_action_duration):
     int_iob = integrate_iob(t0, t1, insulin_action_duration * 60.0, t)
 
-    return -event['amount'] / 60.0 * insulin_sensitivity * ((t1 - t0) - int_iob)
+    return event['amount'] / 60.0 * -insulin_sensitivity * ((t1 - t0) - int_iob)
+
+
+def calculate_iob(
+    normalized_history,
+    insulin_action_curve,
+    dt=5,
+    sensor_delay=10,
+    basal_dosing_end=None
+):
+    """Calculates insulin on board degradation according to Walsh's algorithm, from the latest history entry until 0
+
+    :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
+    :type normalized_history: list(dict)
+    :param insulin_action_curve: Duration of insulin action for the patient in hours
+    :type insulin_action_curve: Int
+    :param dt: The time differential for calculation and return value spacing in minutes
+    :type dt: Int
+    :param sensor_delay: The delay to expect between input effects and sensor glucose readings
+    :type sensor_delay: Int
+    :param basal_dosing_end: A datetime at which continuing doses should be assumed to be cancelled
+    :type basal_dosing_end: datetime.datetime
+    :return: A list of IOB values and their timestamps
+    :rtype: list(dict)
+    """
+    if len(normalized_history) == 0:
+        return []
+
+    first_history_event = normalized_history[0]
+    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    last_history_datetime = parse(last_history_event['end_at'])
+    simulation_start = parse(first_history_event['start_at'])
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + sensor_delay))
+
+    insulin_duration_minutes = insulin_action_curve * 60.0
+
+    # For each incremental minute from the simulation start time, calculate the effect values
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
+    simulation_count = len(simulation_minutes)
+
+    iob = [0.0] * simulation_count
+
+    for history_event in normalized_history:
+        start_at = parse(history_event['start_at'])
+        end_at = parse(history_event['end_at'])
+
+        for i, timestamp in enumerate(simulation_timestamps):
+            t = (timestamp - start_at).total_seconds() / 60.0 - sensor_delay
+
+            if t < 0:
+                continue
+            elif history_event['unit'] == Unit.units:
+                effect = history_event['amount'] * walsh_iob_curve(t, insulin_duration_minutes)
+            elif history_event['unit'] == Unit.units_per_hour:
+                if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
+                    end_at = basal_dosing_end
+
+                t0 = 0
+                t1 = int(math.ceil((end_at - start_at).total_seconds() / 60.0))
+
+                effect = history_event['amount'] / (60.0 / dt) * sum_iob(t0, t1, insulin_duration_minutes, t, dt)
+            else:
+                continue
+
+            iob[i] += effect
+
+    return [{
+        'date': timestamp.isoformat(),
+        'amount': iob[i],
+        'unit': Unit.units
+    } for i, timestamp in enumerate(simulation_timestamps)]
 
 
 def future_glucose(
@@ -155,6 +260,27 @@ def future_glucose(
     sensor_delay=10,
     basal_dosing_end=None
 ):
+    """
+
+    :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
+    :type normalized_history: list(dict)
+    :param recent_glucose: Historical glucose, cleaned by openapscontrib.glucosetools
+    :type recent_glucose: list(dict)
+    :param insulin_action_curve: Duration of insulin action for the patient
+    :type insulin_action_curve: Int
+    :param insulin_sensitivity_schedule: Daily schedule of insulin sensitivity in mg/dL/U
+    :type insulin_sensitivity_schedule: Schedule
+    :param carb_ratio_schedule: Daily schedule of carb sensitivity in g/U
+    :type carb_ratio_schedule: Schedule
+    :param dt: The time differential for calculation and return value spacing in minutes
+    :type dt: Int
+    :param sensor_delay: The delay to expect between input effects and sensor glucose readings
+    :type sensor_delay: Int
+    :param basal_dosing_end: A datetime at which continuing doses should be assumed to be cancelled
+    :type basal_dosing_end: datetime.datetime
+    :return: A list of predicted glucose values
+    :rtype: list(dict)
+    """
     if len(recent_glucose) == 0:
         return []
 
@@ -205,17 +331,15 @@ def future_glucose(
                 effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio, absorption_rate)
                 apply_to = carb_effect
             elif history_event['unit'] == Unit.units:
-                effect = bolus_effect_at_datetime(history_event, t, insulin_sensitivity, insulin_action_curve)
+                effect = cumulative_bolus_effect_at_time(history_event, t, insulin_sensitivity, insulin_action_curve)
                 apply_to = insulin_effect
             elif history_event['unit'] == Unit.units_per_hour:
-                end_at = parse(history_event['end_at'])
-
                 if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
                     end_at = basal_dosing_end
 
                 t1 = (end_at - start_at).total_seconds() / 60.0
 
-                effect = temp_basal_effect_at_datetime(history_event, t, 0, t1, insulin_sensitivity, insulin_action_curve)
+                effect = cumulative_temp_basal_effect_at_time(history_event, t, 0, t1, insulin_sensitivity, insulin_action_curve)
                 apply_to = insulin_effect
             elif history_event['unit'] == Unit.event:
                 # effect added through use of exercise marker (JournalEntryExerciseMarker) in x23 models
