@@ -112,8 +112,9 @@ class walsh_iob(Use):
         args_dict = dict(**args.__dict__)
 
         for key in ('history', 'settings', 'insulin_action_curve', 'basal_dosing_end'):
-            if key in args_dict:
-                params[key] = args_dict[key]
+            value = args_dict.get('key')
+            if value:
+                params[key] = value
 
         return params
 
