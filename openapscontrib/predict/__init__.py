@@ -113,7 +113,7 @@ class walsh_iob(Use):
 
         for key in ('history', 'settings', 'insulin_action_curve', 'basal_dosing_end'):
             value = args_dict.get('key')
-            if value:
+            if value is not None:
                 params[key] = value
 
         return params
