@@ -216,7 +216,7 @@ def calculate_iob(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = normalized_history[0]
+    first_history_event = normalized_history[-1]
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
