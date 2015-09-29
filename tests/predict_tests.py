@@ -368,6 +368,28 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictEqual({'date': '2015-07-13T12:10:00', 'amount': 1.0, 'unit': 'U'}, iob[2])
         self.assertDictEqual({'date': '2015-07-13T16:10:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
 
+    def test_datetime_rounding(self):
+        normalized_history = [
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T12:02:37",
+                "end_at": "2015-07-13T12:02:37",
+                "amount": 1.0,
+                "unit": "U"
+            }
+        ]
+
+        iob = calculate_iob(
+            normalized_history,
+            4
+        )
+
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
+        self.assertDictEqual({'date': '2015-07-13T12:10:00', 'amount': 0.0, 'unit': 'U'}, iob[2])
+        self.assertDictContainsSubset({'date': '2015-07-13T12:15:00', 'unit': 'U'}, iob[3])
+        self.assertAlmostEqual(1.0, iob[3]['amount'], delta=0.01)
+        self.assertDictEqual({'date': '2015-07-13T16:15:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+
     def test_multiple_bolus(self):
         normalized_history = [
             {
@@ -490,5 +512,5 @@ class CalculateIOBTestCase(unittest.TestCase):
             4
         )
 
-        self.assertDictEqual({'date': '2015-09-07T22:23:08', 'amount': 0.0, 'unit': 'U'}, iob[0])
-        self.assertDictEqual({'date': '2015-09-08T02:33:08', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+        self.assertDictEqual({'date': '2015-09-07T22:20:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
+        self.assertDictEqual({'date': '2015-09-08T02:35:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])

@@ -35,6 +35,18 @@ class Schedule(object):
         return result
 
 
+def floor_datetime_at_minute_interval(timestamp, minute):
+    return timestamp - datetime.timedelta(
+        minutes=timestamp.minute % minute,
+        seconds=timestamp.second,
+        microseconds=timestamp.microsecond
+    )
+
+
+def ceil_datetime_at_minute_interval(timestamp, minute):
+    return floor_datetime_at_minute_interval(timestamp + datetime.timedelta(minutes=minute), minute)
+
+
 def glucose_data_tuple(glucose_entry):
     return (
         parse(glucose_entry.get('date') or glucose_entry['display_time']),
@@ -206,8 +218,8 @@ def calculate_iob(
 
     first_history_event = normalized_history[0]
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
-    last_history_datetime = parse(last_history_event['end_at'])
-    simulation_start = parse(first_history_event['start_at'])
+    last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
+    simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + sensor_delay))
 
     insulin_duration_minutes = insulin_action_curve * 60.0
