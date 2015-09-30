@@ -158,7 +158,11 @@ def integrate_iob(t0, t1, insulin_action_duration, t):
     integral = walsh_iob_curve(t - t0, insulin_action_duration) + walsh_iob_curve(t - t1, insulin_action_duration)
 
     for i in range(1, nn - 1, 2):
-        integral += 4 * walsh_iob_curve(t - (t0 + i * dx), insulin_action_duration) + 2 * walsh_iob_curve(t - (t0 + (i + 1) * dx), insulin_action_duration)
+        integral += 4 * walsh_iob_curve(
+            t - (t0 + i * dx), insulin_action_duration
+        ) + 2 * walsh_iob_curve(
+            t - (t0 + (i + 1) * dx), insulin_action_duration
+        )
 
     return integral * dx / 3.0
 
@@ -215,7 +219,6 @@ def calculate_iob(
     normalized_history,
     insulin_action_curve,
     dt=5,
-    sensor_delay=10,
     basal_dosing_end=None
 ):
     """Calculates insulin on board degradation according to Walsh's algorithm, from the latest history entry until 0
@@ -226,8 +229,6 @@ def calculate_iob(
     :type insulin_action_curve: Int
     :param dt: The time differential for calculation and return value spacing in minutes
     :type dt: Int
-    :param sensor_delay: The delay to expect between input effects and sensor glucose readings
-    :type sensor_delay: Int
     :param basal_dosing_end: A datetime at which continuing doses should be assumed to be cancelled
     :type basal_dosing_end: datetime.datetime
     :return: A list of IOB values and their timestamps
@@ -240,7 +241,7 @@ def calculate_iob(
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
-    simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + sensor_delay))
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60))
 
     insulin_duration_minutes = insulin_action_curve * 60.0
 
@@ -256,7 +257,7 @@ def calculate_iob(
         end_at = parse(history_event['end_at'])
 
         for i, timestamp in enumerate(simulation_timestamps):
-            t = (timestamp - start_at).total_seconds() / 60.0 - sensor_delay
+            t = (timestamp - start_at).total_seconds() / 60.0
 
             if t < 0:
                 continue
@@ -371,7 +372,14 @@ def future_glucose(
 
                 t1 = (end_at - start_at).total_seconds() / 60.0
 
-                effect = cumulative_temp_basal_effect_at_time(history_event, t, 0, t1, insulin_sensitivity, insulin_action_curve)
+                effect = cumulative_temp_basal_effect_at_time(
+                    history_event,
+                    t,
+                    0,
+                    t1,
+                    insulin_sensitivity,
+                    insulin_action_curve
+                )
                 apply_to = insulin_effect
             elif history_event['unit'] == Unit.event:
                 # effect added through use of exercise marker (JournalEntryExerciseMarker) in x23 models
