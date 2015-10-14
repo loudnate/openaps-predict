@@ -106,12 +106,19 @@ class walsh_iob(Use):
                  'as a JSON-encoded pump clock file'
         )
 
+        parser.add_argument(
+            '--absorption-delay',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The delay time between a dosing event and when absorption begins'
+        )
+
     def get_params(self, args):
         params = super(walsh_iob, self).get_params(args)
 
         args_dict = dict(**args.__dict__)
 
-        for key in ('history', 'settings', 'insulin_action_curve', 'basal_dosing_end'):
+        for key in ('history', 'settings', 'insulin_action_curve', 'basal_dosing_end', 'absorption_delay'):
             value = args_dict.get(key)
             if value is not None:
                 params[key] = value
@@ -133,7 +140,14 @@ class walsh_iob(Use):
             _opt_json_file(params.get('settings', ''))['insulin_action_curve']
         )
 
-        return args, dict(basal_dosing_end=_opt_date(_opt_json_file(params.get('basal_dosing_end'))))
+        kwargs = dict(
+            basal_dosing_end=_opt_date(_opt_json_file(params.get('basal_dosing_end')))
+        )
+
+        if params.get('absorption_delay'):
+            kwargs.update(absorption_delay=params.get('absorption_delay'))
+
+        return args, kwargs
 
     def main(self, args, app):
         args, kwargs = self.get_program(self.get_params(args))
