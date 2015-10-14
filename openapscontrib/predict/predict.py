@@ -85,7 +85,7 @@ def carb_effect_curve(t, absorption_time):
 
     :param t: The time in t since the carbs were eaten
     :type t: float
-    :param absorption_time: The total absorption time of the carbohydrates
+    :param absorption_time: The total absorption time of the carbohydrates in minutes
     :type absorption_time: int
     :return: A percentage of the initial carb intake, from 0 to 1
     :rtype: float
@@ -218,6 +218,72 @@ def cumulative_temp_basal_effect_at_time(event, t, t0, t1, insulin_sensitivity, 
     return event['amount'] / 60.0 * -insulin_sensitivity * ((t1 - t0) - int_iob)
 
 
+def calculate_carb_effect(
+    normalized_history,
+    carb_ratio_schedule,
+    insulin_sensitivity_schedule,
+    dt=5,
+    absorption_duration=180,
+    absorption_delay=10
+):
+    """Calculates the relative effect of carbohydrate absorption on blood glucose for a sequence of meals
+
+    :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
+    :type normalized_history: list(dict)
+    :param carb_ratio_schedule: Daily schedule of carb sensitivity in g/U
+    :type carb_ratio_schedule: Schedule
+    :param insulin_sensitivity_schedule: Daily schedule of insulin sensitivity in mg/dL/U
+    :type insulin_sensitivity_schedule: Schedule
+    :param dt: The time differential for calculation and return value spacing in minutes
+    :type dt: int
+    :param absorption_duration: The total absorption time of the carbohydrates in minutes
+    :type absorption_duration: int
+    :param absorption_delay: The delay time before a meal begins absorption in minutes
+    :type absorption_delay: int
+    :return: A list of relative blood glucose values and their timestamps
+    :rtype: list(dict)
+    """
+    if len(normalized_history) == 0:
+        return []
+
+    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
+    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
+    simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
+
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
+    simulation_count = len(simulation_minutes)
+
+    carb_effect = [0.0] * simulation_count
+
+    for history_event in normalized_history:
+        if history_event['unit'] == Unit.grams:
+            initial_effect = 0
+            start_at = parse(history_event['start_at'])
+
+            carb_ratio = carb_ratio_schedule.at(start_at.time())['ratio']
+            insulin_sensitivity = insulin_sensitivity_schedule.at(start_at.time())['sensitivity']
+
+            for i, timestamp in enumerate(simulation_timestamps):
+                t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
+
+                effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio, absorption_duration)
+
+                if i == 0:
+                    initial_effect = effect
+
+                effect -= initial_effect
+                carb_effect[i] += effect
+
+    return [{
+        'date': timestamp.isoformat(),
+        'amount': carb_effect[i],
+        'unit': Unit.milligrams_per_deciliter
+    } for i, timestamp in enumerate(simulation_timestamps)]
+
+
 def calculate_insulin_effect(
     normalized_history,
     insulin_action_curve,
@@ -226,7 +292,7 @@ def calculate_insulin_effect(
     absorption_delay=10,
     basal_dosing_end=None
 ):
-    """Calculates the relative effect on blood glucose from insulin absorption as a schedule
+    """Calculates the relative effect of insulin absorption on blood glucose for a sequence of doses
 
     :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
     :type normalized_history: list(dict)

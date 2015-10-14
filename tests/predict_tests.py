@@ -4,6 +4,7 @@ import os
 import unittest
 
 from openapscontrib.predict.predict import Schedule
+from openapscontrib.predict.predict import calculate_carb_effect
 from openapscontrib.predict.predict import calculate_insulin_effect
 from openapscontrib.predict.predict import calculate_iob
 from openapscontrib.predict.predict import future_glucose
@@ -346,6 +347,67 @@ class FutureGlucoseTestCase(unittest.TestCase):
                 Schedule(self.insulin_sensitivities['sensitivities']),
                 Schedule(self.carb_ratios['schedule'])
             )
+
+
+class CalculateCarbEffectTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with open(get_file_at_path("fixtures/read_insulin_sensitivies.json")) as fp:
+            cls.insulin_sensitivities = json.load(fp)
+
+        with open(get_file_at_path("fixtures/read_carb_ratios.json")) as fp:
+            cls.carb_ratios = json.load(fp)
+
+    def test_carb_completion_with_ratio_change(self):
+        normalized_history = [
+            {
+                "type": "Meal",
+                "start_at": "2015-07-15T14:30:00",
+                "end_at": "2015-07-15T14:30:00",
+                "amount": 9,
+                "unit": "g"
+            }
+        ]
+
+        effect = calculate_carb_effect(
+            normalized_history,
+            Schedule(self.carb_ratios['schedule']),
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictEqual({'date': '2015-07-15T17:40:00', 'amount': 40.0, 'unit': 'mg/dL'}, effect[-1])
+
+    def test_no_input_history(self):
+        normalized_history = []
+
+        effect = calculate_carb_effect(
+            normalized_history,
+            Schedule(self.carb_ratios['schedule']),
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertListEqual([], effect)
+
+    def test_fake_unit(self):
+        normalized_history = [
+            {
+                "start_at": "2015-09-07T22:23:08",
+                "description": "JournalEntryExerciseMarker",
+                "end_at": "2015-09-07T22:23:08",
+                "amount": 1,
+                "type": "Exercise",
+                "unit": "beer"
+            }
+        ]
+
+        effect = calculate_carb_effect(
+            normalized_history,
+            Schedule(self.carb_ratios['schedule']),
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictEqual({'date': '2015-09-07T22:20:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
+        self.assertDictEqual({'date': '2015-09-08T01:35:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[-1])
 
 
 class CalculateInsulinEffectTestCase(unittest.TestCase):
