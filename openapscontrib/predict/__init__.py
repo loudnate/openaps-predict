@@ -14,6 +14,7 @@ import os
 from openaps.uses.use import Use
 
 from predict import Schedule
+from predict import calculate_iob
 from predict import future_glucose
 from predict import glucose_data_tuple
 
@@ -41,7 +42,7 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return [glucose]
+    return [glucose, walsh_iob]
 
 
 def _opt_date(timestamp):
@@ -73,6 +74,88 @@ def _opt_json_file(filename):
 
 
 # noinspection PyPep8Naming
+class walsh_iob(Use):
+    """Predict IOB using Walsh's algorithm
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'history',
+            help='JSON-encoded pump history data file, normalized by openapscontrib.mmhistorytools'
+        )
+
+        parser.add_argument(
+            '--settings',
+            nargs=argparse.OPTIONAL,
+            help='JSON-encoded pump settings file, optional if --insulin-action-curve is set'
+        )
+
+        parser.add_argument(
+            '--insulin-action-curve',
+            nargs=argparse.OPTIONAL,
+            type=float,
+            choices=range(3, 7),
+            help='Insulin action curve, optional if --settings is set'
+        )
+
+        parser.add_argument(
+            '--basal-dosing-end',
+            nargs=argparse.OPTIONAL,
+            help='The timestamp at which temp basal dosing should be assumed to end, '
+                 'as a JSON-encoded pump clock file'
+        )
+
+        parser.add_argument(
+            '--absorption-delay',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The delay time between a dosing event and when absorption begins'
+        )
+
+    def get_params(self, args):
+        params = super(walsh_iob, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('history', 'settings', 'insulin_action_curve', 'basal_dosing_end', 'absorption_delay'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        args = (
+            _json_file(params['history']),
+            params.get('insulin_action_curve', None) or
+            _opt_json_file(params.get('settings', ''))['insulin_action_curve']
+        )
+
+        kwargs = dict(
+            basal_dosing_end=_opt_date(_opt_json_file(params.get('basal_dosing_end')))
+        )
+
+        if params.get('absorption_delay'):
+            kwargs.update(absorption_delay=params.get('absorption_delay'))
+
+        return args, kwargs
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_iob(*args, **kwargs)
+
+
+# noinspection PyPep8Naming
 class glucose(Use):
     """Predict glucose
 
@@ -96,7 +179,7 @@ class glucose(Use):
         parser.add_argument(
             '--settings',
             nargs=argparse.OPTIONAL,
-            help='JSON-encoded pump settings file, optional if --idur is set'
+            help='JSON-encoded pump settings file, optional if --insulin-action-curve is set'
         )
 
         parser.add_argument(
@@ -154,10 +237,12 @@ class glucose(Use):
         assert datetime.now() - pump_history_file_time < timedelta(minutes=5), 'History data is more than 5 minutes old'
 
         recent_glucose = _json_file(params['glucose'])
-        glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
-        last_glucose_datetime, _ = glucose_data_tuple(recent_glucose[0])
-        assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
-            'Glucose data is more than 15 minutes old'
+
+        if len(recent_glucose) > 0:
+            glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
+            last_glucose_datetime, _ = glucose_data_tuple(recent_glucose[0])
+            assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
+                'Glucose data is more than 15 minutes old'
 
         args = (
             _json_file(params['pump-history']),
