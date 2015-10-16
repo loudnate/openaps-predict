@@ -146,7 +146,7 @@ class FutureGlucoseTestCase(unittest.TestCase):
 
         self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
         self.assertEqual('2015-07-13T17:10:00', glucose[-1]['date'])
-        self.assertAlmostEqual(110.0, glucose[-1]['glucose'], delta=2)
+        self.assertAlmostEqual(110.0, glucose[-1]['glucose'])
 
     def test_future_square_bolus(self):
         normalized_history = [
@@ -177,6 +177,8 @@ class FutureGlucoseTestCase(unittest.TestCase):
         self.assertDictEqual({'date': '2015-07-13T11:00:00', 'glucose': 150.0}, glucose[0])
         self.assertDictEqual({'date': '2015-07-13T11:30:00', 'glucose': 150.0}, glucose[6])
         self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[12])
+        self.assertEqual('2015-07-13T17:10:00', glucose[-1]['date'])
+        self.assertAlmostEqual(110.0, glucose[-1]['glucose'])
 
     def test_carb_completion_with_ratio_change(self):
         normalized_history = [
@@ -503,12 +505,102 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
         )
 
         self.assertDictContainsSubset({'date': '2015-07-13T12:10:00', 'unit': 'mg/dL'}, effect[2])
-        self.assertAlmostEqual(-7.55, effect[2]['amount'], delta=0.01)
+        self.assertAlmostEqual(-1.06, effect[2]['amount'], delta=0.01)
         self.assertDictEqual({'date': '2015-07-13T17:10:00', 'amount': -40.0, 'unit': 'mg/dL'}, effect[-1])
         self.assertEqual('2015-07-13T13:50:00', effect[22]['date'])
-        self.assertAlmostEqual(-18.65, effect[24]['amount'], delta=0.01)
+        self.assertAlmostEqual(-13.37, effect[24]['amount'], delta=0.01)
 
-    def test_inulin_effect_with_sensf_change(self):
+    def test_two_square_bolus(self):
+        normalized_history = [
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T07:00:00",
+                "end_at": "2015-07-13T08:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            },
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T12:00:00",
+                "end_at": "2015-07-13T13:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            }
+        ]
+
+        effect = calculate_insulin_effect(
+            normalized_history,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictContainsSubset({'date': '2015-07-13T07:10:00', 'unit': 'mg/dL'}, effect[2])
+        self.assertAlmostEqual(-1.06, effect[2]['amount'], delta=0.01)
+        self.assertDictEqual({'date': '2015-07-13T17:10:00', 'amount': -80.0, 'unit': 'mg/dL'}, effect[-1])
+        self.assertEqual('2015-07-13T08:50:00', effect[22]['date'])
+        self.assertAlmostEqual(-13.37, effect[24]['amount'], delta=0.01)
+
+    def test_overlapping_basals(self):
+        normalized_history = [
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-13T08:00:00",
+                "end_at": "2015-07-13T09:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            },
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-13T07:00:00",
+                "end_at": "2015-07-13T08:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            }
+        ]
+
+        effect = calculate_insulin_effect(
+            normalized_history,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictContainsSubset({'date': '2015-07-13T07:10:00', 'unit': 'mg/dL'}, effect[2])
+        self.assertAlmostEqual(-1.07, effect[2]['amount'], delta=0.01)
+        self.assertDictEqual({'date': '2015-07-13T13:10:00', 'amount': -80.0, 'unit': 'mg/dL'}, effect[-1])
+        self.assertEqual('2015-07-13T08:50:00', effect[22]['date'])
+        self.assertAlmostEqual(-16.50, effect[24]['amount'], delta=0.01)
+
+    def test_counteracting_basals(self):
+        normalized_history = [
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-13T08:00:00",
+                "end_at": "2015-07-13T09:00:00",
+                "amount": -1.0,
+                "unit": "U/hour"
+            },
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-13T07:00:00",
+                "end_at": "2015-07-13T08:00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            }
+        ]
+
+        effect = calculate_insulin_effect(
+            normalized_history,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictContainsSubset({'date': '2015-07-13T07:10:00', 'unit': 'mg/dL'}, effect[2])
+        self.assertAlmostEqual(-1.06, effect[2]['amount'], delta=0.01)
+        self.assertDictEqual({'date': '2015-07-13T13:10:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[-1])
+        self.assertEqual('2015-07-13T08:50:00', effect[22]['date'])
+        self.assertAlmostEqual(-10.25, effect[24]['amount'], delta=0.01)
+
+    def test_insulin_effect_with_sensf_change(self):
         normalized_history = [
             {
                 "type": "Bolus",
@@ -595,6 +687,40 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
 
         self.assertDictEqual({'date': '2015-09-07T22:20:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
         self.assertDictEqual({'date': '2015-09-08T02:35:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[-1])
+
+    def test_negative_temp_basals(self):
+        normalized_history = [
+            {
+                "amount": -0.8,
+                "start_at": "2015-10-15T20:39:52",
+                "description": "TempBasal: 0.0U/hour over 20min",
+                "type": "TempBasal",
+                "unit": "U/hour",
+                "end_at": "2015-10-15T20:59:52"
+            },
+            {
+                "amount": -0.75,
+                "start_at": "2015-10-15T20:34:34",
+                "description": "TempBasal: 0.05U/hour over 5min",
+                "type": "TempBasal",
+                "unit": "U/hour",
+                "end_at": "2015-10-15T20:39:34"
+            }
+        ]
+
+        effect = calculate_insulin_effect(
+            normalized_history,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictEqual({'date': '2015-10-15T20:30:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
+
+        self.assertDictContainsSubset({'date': '2015-10-15T22:40:00', 'unit': 'mg/dL'}, effect[26])
+        self.assertAlmostEqual(5.97, effect[26]['amount'], delta=0.01)
+
+        self.assertEqual('2015-10-16T01:10:00', effect[-1]['date'])
+        self.assertAlmostEqual(13.16, effect[-1]['amount'], delta=0.01)
 
 
 class CalculateIOBTestCase(unittest.TestCase):
@@ -766,3 +892,4 @@ class CalculateIOBTestCase(unittest.TestCase):
 
         self.assertDictEqual({'date': '2015-09-07T22:20:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
         self.assertDictEqual({'date': '2015-09-08T02:35:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+
