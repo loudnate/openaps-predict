@@ -549,7 +549,7 @@ def future_glucose(
     insulin_sensitivity_schedule,
     carb_ratio_schedule,
     dt=5,
-    sensor_delay=10,
+    absorption_delay=10,
     basal_dosing_end=None
 ):
     """
@@ -566,94 +566,28 @@ def future_glucose(
     :type carb_ratio_schedule: Schedule
     :param dt: The time differential for calculation and return value spacing in minutes
     :type dt: int
-    :param sensor_delay: The delay to expect between input effects and sensor glucose readings
-    :type sensor_delay: int
+    :param absorption_delay: The delay to expect between input effects and sensor glucose readings
+    :type absorption_delay: int
     :param basal_dosing_end: A datetime at which continuing doses should be assumed to be cancelled
     :type basal_dosing_end: datetime.datetime
     :return: A list of predicted glucose values
     :rtype: list(dict)
     """
-    if len(recent_glucose) == 0:
-        return []
+    insulin_effect = calculate_insulin_effect(
+        normalized_history,
+        insulin_action_curve,
+        insulin_sensitivity_schedule,
+        dt=dt,
+        absorption_delay=absorption_delay,
+        basal_dosing_end=basal_dosing_end
+    )
 
-    last_glucose_datetime, last_glucose_value = glucose_data_tuple(recent_glucose[0])
+    carb_effect = calculate_carb_effect(
+        normalized_history,
+        carb_ratio_schedule,
+        insulin_sensitivity_schedule,
+        dt=dt,
+        absorption_delay=absorption_delay
+    )
 
-    # Determine our simulation time.
-    simulation_start = simulation_end = parse(last_glucose_datetime)
-
-    if len(normalized_history) > 0:
-        last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
-        last_history_datetime = parse(last_history_event['end_at'])
-        simulation_end = max(simulation_end, last_history_datetime)
-
-    simulation_end += datetime.timedelta(minutes=(insulin_action_curve * 60 + sensor_delay))
-
-    # For each incremental minute from the simulation start time, calculate the effect values
-    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
-    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
-    simulation_count = len(simulation_minutes)
-
-    carb_effect = [0.0] * simulation_count
-    insulin_effect = [0.0] * simulation_count
-
-    for history_event in normalized_history:
-        initial_effect = 0
-        start_at = parse(history_event['start_at'])
-        end_at = parse(history_event['end_at'])
-
-        insulin_sensitivity = insulin_sensitivity_schedule.at(start_at.time())['sensitivity']
-
-        insulin_end_datetime = end_at + datetime.timedelta(hours=insulin_action_curve)
-        absorption_rate = 180
-        absorption_end_datetime = end_at + datetime.timedelta(minutes=absorption_rate)
-
-        for i, timestamp in enumerate(simulation_timestamps):
-            t = (timestamp - start_at).total_seconds() / 60.0 - sensor_delay
-
-            if history_event['unit'] == Unit.grams:
-                # Cap the time used to determine the carb ratio to absorption end so it doesn't
-                # fluctuate after completion
-                ratio_time = min(absorption_end_datetime, timestamp)
-                carb_ratio = carb_ratio_schedule.at(ratio_time.time())['ratio']
-
-                effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio, absorption_rate)
-                apply_to = carb_effect
-            elif history_event['unit'] == Unit.units:
-                effect = cumulative_bolus_effect_at_time(history_event, t, insulin_sensitivity, insulin_action_curve)
-                apply_to = insulin_effect
-            elif history_event['unit'] == Unit.units_per_hour:
-                # Cap the time used to determine the sensitivity so it doesn't fluctuate
-                # after completion
-                sensitivity_time = min(insulin_end_datetime, timestamp)
-                insulin_sensitivity = insulin_sensitivity_schedule.at(sensitivity_time.time())['sensitivity']
-
-                if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
-                    end_at = basal_dosing_end
-
-                t1 = (end_at - start_at).total_seconds() / 60.0
-
-                effect = cumulative_temp_basal_effect_at_time(
-                    history_event,
-                    t,
-                    0,
-                    t1,
-                    insulin_sensitivity,
-                    insulin_action_curve
-                )
-                apply_to = insulin_effect
-            elif history_event['unit'] == Unit.event:
-                # effect added through use of exercise marker (JournalEntryExerciseMarker) in x23 models
-                break
-            else:
-                raise ValueError('Unknown event %s', history_event)
-
-            if i == 0:
-                initial_effect = effect
-
-            effect -= initial_effect
-            apply_to[i] += effect
-
-    return [{
-        'date': timestamp.isoformat(),
-        'glucose': last_glucose_value + carb_effect[i] + insulin_effect[i]
-    } for i, timestamp in enumerate(simulation_timestamps)]
+    return calculate_glucose_from_effects([insulin_effect, carb_effect], recent_glucose)
