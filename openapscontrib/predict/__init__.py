@@ -5,6 +5,7 @@ predict - tools for predicting glucose trends
 """
 from .version import __version__
 
+import ast
 import argparse
 from datetime import datetime, timedelta
 from dateutil.parser import parse
@@ -15,6 +16,7 @@ from openaps.uses.use import Use
 
 from predict import Schedule
 from predict import calculate_carb_effect
+from predict import calculate_glucose_from_effects
 from predict import calculate_insulin_effect
 from predict import calculate_iob
 from predict import future_glucose
@@ -44,7 +46,7 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return [glucose, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
+    return [glucose, glucose_from_effects, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
 
 
 def _opt_date(timestamp):
@@ -322,6 +324,63 @@ class walsh_iob(Use):
         args, kwargs = self.get_program(self.get_params(args))
 
         return calculate_iob(*args, **kwargs)
+
+
+# noinspection PyPep8Naming
+class glucose_from_effects(Use):
+    """Predict glucose from one or more effect schedules
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'effects',
+            nargs=argparse.ONE_OR_MORE,
+            help='JSON-encoded effect schedules data files'
+        )
+
+        parser.add_argument(
+            '--glucose',
+            help='JSON-encoded glucose data file in reverse-chronological order'
+        )
+
+    def get_params(self, args):
+        params = super(glucose_from_effects, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('effects', 'glucose'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        effects = params['effects']
+
+        if isinstance(effects, str):
+            effects = ast.literal_eval(effects)
+
+        args = (
+            [_json_file(f) for f in effects],
+            _json_file(params['glucose'])
+        )
+
+        return args, {}
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_glucose_from_effects(*args, **kwargs)
 
 
 # noinspection PyPep8Naming

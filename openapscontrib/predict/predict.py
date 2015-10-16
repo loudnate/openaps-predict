@@ -310,6 +310,29 @@ def calculate_carb_effect(
     } for i, timestamp in enumerate(simulation_timestamps)]
 
 
+def calculate_cob(
+    normalized_history,
+    dt=5,
+    absorption_duration=180,
+    absorption_delay=10
+):
+    """Calculates the carbohydrate absorption degradation for a sequence of meals
+
+    :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
+    :type normalized_history: list(dict)
+    :param dt: The time differential for calculation and return value spacing in minutes
+    :type dt: int
+    :param absorption_duration: The total absorption time of the carbohydrates in minutes
+    :type absorption_duration: int
+    :param absorption_delay: The delay time before a meal begins absorption in minutes
+    :type absorption_delay: int
+    :return: A list of relative blood glucose values and their timestamps
+    :rtype: list(dict)
+    """
+    # TODO:
+    pass
+
+
 def calculate_insulin_effect(
     normalized_history,
     insulin_action_curve,
@@ -466,6 +489,57 @@ def calculate_iob(
         'amount': iob[i],
         'unit': Unit.units
     } for i, timestamp in enumerate(simulation_timestamps)]
+
+
+def calculate_glucose_from_effects(effects, recent_glucose):
+    """Calculates predicted glucose values from effect schedules starting from the end of measured glucose history
+
+    Each effect should be a list of dicts containing at least 2 keys:
+    {
+        'date': # An ISO timestamp
+        'amount': # A glucose value
+    }
+
+    When working with multiple lists, they should have the same dt interval to ensure a smooth output.
+
+    :param effects: A list of timestamps and glucose values, relative to 0, in chronological order
+    :type effects: list(list(dict))
+    :param recent_glucose: Historical glucose in reverse-chronological order, cleaned by openapscontrib.glucosetools
+    :type recent_glucose: list(dict)
+    :return: A list of predicted glucose values
+    :rtype: list(dict)
+    """
+    if len(recent_glucose) == 0:
+        return []
+
+    last_glucose_date, last_glucose_value = glucose_data_tuple(recent_glucose[0])
+
+    timestamp_to_effect_dict = defaultdict(float)
+
+    for effect in effects:
+        last_effect_amount = 0
+
+        for entry in effect:
+            timestamp_to_effect_dict[entry['date']] += (entry['amount'] - last_effect_amount)
+            last_effect_amount = entry['amount']
+
+    combined_effect = sorted(timestamp_to_effect_dict.items(), key=lambda t: t[0])
+
+    predicted_glucose = [{
+        'date': last_glucose_date,
+        'amount': float(last_glucose_value),
+        'unit': Unit.milligrams_per_deciliter
+    }]
+
+    for entry in combined_effect:
+        if entry[0] > last_glucose_date:
+            predicted_glucose.append({
+                'date': entry[0],
+                'amount': predicted_glucose[-1]['amount'] + entry[1],
+                'unit': Unit.milligrams_per_deciliter
+            })
+
+    return predicted_glucose
 
 
 def future_glucose(
