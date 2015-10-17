@@ -1,7 +1,8 @@
+from collections import defaultdict
 import datetime
 from dateutil.parser import parse
-from operator import add
 import math
+from operator import add
 
 from models import Unit
 
@@ -69,7 +70,7 @@ def ceil_datetime_at_minute_interval(timestamp, minute):
 
 def glucose_data_tuple(glucose_entry):
     return (
-        parse(glucose_entry.get('date') or glucose_entry['display_time']),
+        glucose_entry.get('date') or glucose_entry['display_time'],
         glucose_entry.get('sgv') or glucose_entry.get('amount') or glucose_entry['glucose']
     )
 
@@ -85,7 +86,7 @@ def carb_effect_curve(t, absorption_time):
 
     :param t: The time in t since the carbs were eaten
     :type t: float
-    :param absorption_time: The total absorption time of the carbohydrates
+    :param absorption_time: The total absorption time of the carbohydrates in minutes
     :type absorption_time: int
     :return: A percentage of the initial carb intake, from 0 to 1
     :rtype: float
@@ -194,7 +195,7 @@ def cumulative_bolus_effect_at_time(event, t, insulin_sensitivity, insulin_actio
     :param event: The bolus history event, describing a value in Units of insulin
     :type event: dict
     :param t: The time in minutes from the beginning of the dose
-    :type t: int
+    :type t: float
     :param insulin_sensitivity: The insulin sensitivity at time t, in mg/dL/U
     :type insulin_sensitivity: float
     :param insulin_action_duration: The duration of insulin action at time t, in hours
@@ -202,17 +203,198 @@ def cumulative_bolus_effect_at_time(event, t, insulin_sensitivity, insulin_actio
     :return: The cumulative effect of the bolus on blood glucose at time t, in mg/dL
     :rtype: float
     """
+    if t < 0:
+        return 0
+
     return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration * 60.0))
 
 
 def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio, absorption_rate):
+    """
+
+    :param event:
+    :param t:
+    :type t: float
+    :param insulin_sensitivity:
+    :param carb_ratio:
+    :param absorption_rate:
+    :type absorption_rate: int
+    :return:
+    """
     return insulin_sensitivity / carb_ratio * event['amount'] * carb_effect_curve(t, absorption_rate)
 
 
 def cumulative_temp_basal_effect_at_time(event, t, t0, t1, insulin_sensitivity, insulin_action_duration):
+    """
+
+    :param event:
+    :type event: dict
+    :param t:
+    :type t: float
+    :param t0:
+    :type t0: float
+    :param t1:
+    :type t1: float
+    :param insulin_sensitivity:
+    :type insulin_sensitivity: int
+    :param insulin_action_duration:
+    :type insulin_action_duration: int
+    :return:
+    :rtype: float
+    """
+    if t < 0:
+        return 0
+
     int_iob = integrate_iob(t0, t1, insulin_action_duration * 60, t)
 
     return event['amount'] / 60.0 * -insulin_sensitivity * ((t1 - t0) - int_iob)
+
+
+def calculate_carb_effect(
+    normalized_history,
+    carb_ratio_schedule,
+    insulin_sensitivity_schedule,
+    dt=5,
+    absorption_duration=180,
+    absorption_delay=10
+):
+    """Calculates the relative effect of carbohydrate absorption on blood glucose for a sequence of meals
+
+    :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
+    :type normalized_history: list(dict)
+    :param carb_ratio_schedule: Daily schedule of carb sensitivity in g/U
+    :type carb_ratio_schedule: Schedule
+    :param insulin_sensitivity_schedule: Daily schedule of insulin sensitivity in mg/dL/U
+    :type insulin_sensitivity_schedule: Schedule
+    :param dt: The time differential for calculation and return value spacing in minutes
+    :type dt: int
+    :param absorption_duration: The total absorption time of the carbohydrates in minutes
+    :type absorption_duration: int
+    :param absorption_delay: The delay time before a meal begins absorption in minutes
+    :type absorption_delay: int
+    :return: A list of relative blood glucose values and their timestamps
+    :rtype: list(dict)
+    """
+    if len(normalized_history) == 0:
+        return []
+
+    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
+    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
+    simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
+
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
+    simulation_count = len(simulation_minutes)
+
+    carb_effect = [0.0] * simulation_count
+
+    for history_event in normalized_history:
+        if history_event['unit'] == Unit.grams:
+            start_at = parse(history_event['start_at'])
+
+            carb_ratio = carb_ratio_schedule.at(start_at.time())['ratio']
+            insulin_sensitivity = insulin_sensitivity_schedule.at(start_at.time())['sensitivity']
+
+            for i, timestamp in enumerate(simulation_timestamps):
+                t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
+
+                effect = carb_effect_at_datetime(history_event, t, insulin_sensitivity, carb_ratio, absorption_duration)
+                carb_effect[i] += effect
+
+    return [{
+        'date': timestamp.isoformat(),
+        'amount': carb_effect[i],
+        'unit': Unit.milligrams_per_deciliter
+    } for i, timestamp in enumerate(simulation_timestamps)]
+
+
+def calculate_insulin_effect(
+    normalized_history,
+    insulin_action_curve,
+    insulin_sensitivity_schedule,
+    dt=5,
+    absorption_delay=10,
+    basal_dosing_end=None
+):
+    """Calculates the relative effect of insulin absorption on blood glucose for a sequence of doses
+
+    :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
+    :type normalized_history: list(dict)
+    :param insulin_action_curve: Duration of insulin action for the patient in hours
+    :type insulin_action_curve: int
+    :param insulin_sensitivity_schedule: Daily schedule of insulin sensitivity in mg/dL/U
+    :type insulin_sensitivity_schedule: Schedule
+    :param dt: The time differential for calculation and return value spacing in minutes
+    :type dt: int
+    :param absorption_delay: The delay time before a dose begins absorption in minutes
+    :type absorption_delay: int
+    :param basal_dosing_end: A datetime at which continuing doses should be assumed to be cancelled
+    :type basal_dosing_end: datetime.datetime
+    :return: A list of relative blood glucose values and their timestamps
+    :rtype: list(dict)
+    """
+    if len(normalized_history) == 0:
+        return []
+
+    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
+    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
+    simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + absorption_delay))
+
+    # For each incremental minute from the simulation start time, calculate the effect values
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
+    simulation_count = len(simulation_minutes)
+
+    insulin_effect = [0.0] * simulation_count
+
+    for history_event in normalized_history:
+        start_at = parse(history_event['start_at'])
+        end_at = parse(history_event['end_at'])
+        effect_end_at = end_at + datetime.timedelta(hours=insulin_action_curve)
+
+        insulin_sensitivity = insulin_sensitivity_schedule.at(start_at.time())['sensitivity']
+
+        for i, timestamp in enumerate(simulation_timestamps):
+            t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
+
+            if t < 0 - absorption_delay:
+                continue
+            elif history_event['unit'] == Unit.units:
+                effect = cumulative_bolus_effect_at_time(history_event, t, insulin_sensitivity, insulin_action_curve)
+            elif history_event['unit'] == Unit.units_per_hour:
+                # Cap the time used to determine the sensitivity so it doesn't fluctuate
+                # after completion
+                sensitivity_time = min(effect_end_at, timestamp)
+                insulin_sensitivity = insulin_sensitivity_schedule.at(sensitivity_time.time())['sensitivity']
+
+                if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
+                    end_at = basal_dosing_end
+
+                t0 = 0
+                t1 = math.ceil((end_at - start_at).total_seconds() / 60.0)
+
+                effect = cumulative_temp_basal_effect_at_time(
+                    history_event,
+                    t,
+                    t0,
+                    t1,
+                    insulin_sensitivity,
+                    insulin_action_curve
+                )
+            else:
+                continue
+
+            insulin_effect[i] += effect
+
+    return [{
+        'date': timestamp.isoformat(),
+        'amount': insulin_effect[i],
+        'unit': Unit.milligrams_per_deciliter
+    } for i, timestamp in enumerate(simulation_timestamps)]
 
 
 def calculate_iob(
@@ -300,7 +482,7 @@ def future_glucose(
 
     :param normalized_history: History data in reverse-chronological order, normalized by openapscontrib.mmhistorytools
     :type normalized_history: list(dict)
-    :param recent_glucose: Historical glucose, cleaned by openapscontrib.glucosetools
+    :param recent_glucose: Historical glucose in reverse-chronological order, cleaned by openapscontrib.glucosetools
     :type recent_glucose: list(dict)
     :param insulin_action_curve: Duration of insulin action for the patient
     :type insulin_action_curve: int
@@ -323,8 +505,7 @@ def future_glucose(
     last_glucose_datetime, last_glucose_value = glucose_data_tuple(recent_glucose[0])
 
     # Determine our simulation time.
-    simulation_start = last_glucose_datetime
-    simulation_end = last_glucose_datetime
+    simulation_start = simulation_end = parse(last_glucose_datetime)
 
     if len(normalized_history) > 0:
         last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
@@ -346,17 +527,14 @@ def future_glucose(
         start_at = parse(history_event['start_at'])
         end_at = parse(history_event['end_at'])
 
+        insulin_sensitivity = insulin_sensitivity_schedule.at(start_at.time())['sensitivity']
+
         insulin_end_datetime = end_at + datetime.timedelta(hours=insulin_action_curve)
         absorption_rate = 180
         absorption_end_datetime = end_at + datetime.timedelta(minutes=absorption_rate)
 
         for i, timestamp in enumerate(simulation_timestamps):
             t = (timestamp - start_at).total_seconds() / 60.0 - sensor_delay
-
-            # Cap the time used to determine the sensitivity so it doesn't fluctuate
-            # after completion
-            sensitivity_time = min(insulin_end_datetime, timestamp)
-            insulin_sensitivity = insulin_sensitivity_schedule.at(sensitivity_time.time())['sensitivity']
 
             if history_event['unit'] == Unit.grams:
                 # Cap the time used to determine the carb ratio to absorption end so it doesn't
@@ -370,6 +548,11 @@ def future_glucose(
                 effect = cumulative_bolus_effect_at_time(history_event, t, insulin_sensitivity, insulin_action_curve)
                 apply_to = insulin_effect
             elif history_event['unit'] == Unit.units_per_hour:
+                # Cap the time used to determine the sensitivity so it doesn't fluctuate
+                # after completion
+                sensitivity_time = min(insulin_end_datetime, timestamp)
+                insulin_sensitivity = insulin_sensitivity_schedule.at(sensitivity_time.time())['sensitivity']
+
                 if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
                     end_at = basal_dosing_end
 
