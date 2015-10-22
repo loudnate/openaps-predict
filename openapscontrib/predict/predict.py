@@ -289,10 +289,11 @@ def calculate_momentum_effect(
 
     if prediction_type == 'linear_regression':
         # calculate momentum_effect[i]
+        glucose_slope = # caluclate slope from last three points
         for i, timestamp in enumerate(simulation_timestamps):
             t = (timestamp - simulation_start).total_seconds() / 60.0
-            effect =  # calculation
-            momentum_effect += effect
+            effect =  last_glucose_value + t * glucose_slope # should this be in BG or dBG/dt?
+            momentum_effect[i] += effect
 
         return [{
             'date': timestamp.isoformat(),
