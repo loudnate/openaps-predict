@@ -15,6 +15,7 @@ import os
 from openaps.uses.use import Use
 
 from predict import Schedule
+from predict import calculate_momentum_effect
 from predict import calculate_carb_effect
 from predict import calculate_glucose_from_effects
 from predict import calculate_insulin_effect
@@ -46,7 +47,7 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return [glucose, glucose_from_effects, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
+    return [glucose, glucose_from_effects, glucose_momentum_effect, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
 
 
 def _opt_date(timestamp):
@@ -75,6 +76,73 @@ def _opt_json_file(filename):
     """
     if filename:
         return _json_file(filename)
+
+
+# noinspection PyPep8Naming
+class glucose_momentum_effect(Use):
+    """Predict short-term trend of glucose
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'glucose',
+            help='JSON-encoded glucose data file in reverse-chronological order'
+        )
+
+        parser.add_argument(
+            '--prediction-time',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The total length of forward trend extrapolation in minutes'
+        )
+
+        parser.add_argument(
+            '--prediction-type',
+            type=str,
+            nargs=argparse.OPTIONAL,
+            help='The algorithm to use to predict future glucose; choose from: linear_regression, ...'
+        )
+
+    def get_params(self, args):
+        params = super(glucose_momentum_effect, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('glucose', 'prediction-time', 'prediction-type'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        args = (
+            _json_file(params['glucose'])
+        )
+
+        kwargs = dict()
+
+        if params.get('prediction-time'):
+            kwargs.update(prediction_time=params.get('prediction-time'))
+
+        if params.get('prediction-type'):
+            kwargs.update(prediction_type=params.get('prediction-type'))
+
+        return args, kwargs
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_momentum_effect(*args, **kwargs)
 
 
 # noinspection PyPep8Naming
