@@ -392,7 +392,7 @@ class glucose_from_effects(Use):
             glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
             last_glucose_datetime = parse(glucose_data_tuple(recent_glucose[0])[0])
 
-            if last_glucose_datetime.tzinfo is not None:
+            if last_glucose_datetime.utcoffset() is not None:
                 last_glucose_datetime = make_naive(last_glucose_datetime)
 
             assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
@@ -503,7 +503,7 @@ class glucose(Use):
             glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
             last_glucose_datetime = parse(glucose_data_tuple(recent_glucose[0])[0])
 
-            if last_glucose_datetime.tzinfo is not None:
+            if last_glucose_datetime.utcoffset() is not None:
                 last_glucose_datetime = make_naive(last_glucose_datetime)
 
             assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
