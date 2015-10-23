@@ -502,6 +502,10 @@ class glucose(Use):
         if len(recent_glucose) > 0:
             glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
             last_glucose_datetime = parse(glucose_data_tuple(recent_glucose[0])[0])
+
+            if last_glucose_datetime.tzinfo is not None:
+                last_glucose_datetime = make_naive(last_glucose_datetime)
+
             assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
                 'Glucose data is more than 15 minutes old'
 
