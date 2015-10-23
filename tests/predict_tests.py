@@ -5,6 +5,7 @@ import unittest
 
 from openapscontrib.predict.predict import Schedule
 from openapscontrib.predict.predict import calculate_carb_effect
+from openapscontrib.predict.predict import calculate_glucose_from_effects
 from openapscontrib.predict.predict import calculate_insulin_effect
 from openapscontrib.predict.predict import calculate_iob
 from openapscontrib.predict.predict import future_glucose
@@ -49,8 +50,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T16:10:00', 'glucose': 110.0}, glucose[-1])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictContainsSubset({'date': '2015-07-13T16:10:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(110.0, glucose[-1]['amount'])
 
     def test_multiple_bolus(self):
         normalized_history = [
@@ -85,8 +87,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T10:00:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T15:10:00', 'glucose': 70.0}, glucose[-1])
+        self.assertDictEqual({'date': '2015-07-13T10:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictContainsSubset({'date': '2015-07-13T15:10:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(70.0, glucose[-1]['amount'])
 
     def test_future_bolus(self):
         normalized_history = [
@@ -114,9 +117,10 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T11:00:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T11:30:00', 'glucose': 150.0}, glucose[6])
-        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[12])
+        self.assertDictEqual({'date': '2015-07-13T11:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[1])
+        self.assertDictContainsSubset({'date': '2015-07-13T16:10:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(110.0, glucose[-1]['amount'])
 
     def test_square_bolus(self):
         normalized_history = [
@@ -144,9 +148,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
         self.assertEqual('2015-07-13T17:10:00', glucose[-1]['date'])
-        self.assertAlmostEqual(110.0, glucose[-1]['glucose'])
+        self.assertAlmostEqual(110.0, glucose[-1]['amount'])
 
     def test_future_square_bolus(self):
         normalized_history = [
@@ -174,11 +178,12 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T11:00:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T11:30:00', 'glucose': 150.0}, glucose[6])
-        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[12])
-        self.assertEqual('2015-07-13T17:10:00', glucose[-1]['date'])
-        self.assertAlmostEqual(110.0, glucose[-1]['glucose'])
+        self.assertDictEqual({'date': '2015-07-13T11:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[1])
+        self.assertDictContainsSubset({'date': '2015-07-13T13:00:00', 'unit': 'mg/dL'}, glucose[13])
+        self.assertAlmostEqual(146.87, glucose[13]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-07-13T17:10:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(110.0, glucose[-1]['amount'])
 
     def test_carb_completion_with_ratio_change(self):
         normalized_history = [
@@ -206,7 +211,8 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-15T18:40:00', 'glucose': 190.0}, glucose[-1])
+        self.assertDictContainsSubset({'date': '2015-07-15T18:40:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(190.0, glucose[-1]['amount'])
 
     def test_basal_dosing_end(self):
         normalized_history = [
@@ -235,8 +241,8 @@ class FutureGlucoseTestCase(unittest.TestCase):
             basal_dosing_end=datetime(2015, 7, 17, 12, 30)
         )
 
-        self.assertEqual('2015-07-17T17:10:00', glucose[-1]['date'])
-        self.assertAlmostEqual(130, glucose[-1]['glucose'], delta=1)
+        self.assertDictContainsSubset({'date': '2015-07-17T17:10:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(130, glucose[-1]['amount'], delta=1)
 
     def test_no_input_history(self):
         normalized_history = []
@@ -257,8 +263,7 @@ class FutureGlucoseTestCase(unittest.TestCase):
             basal_dosing_end=datetime(2015, 7, 17, 12, 30)
         )
 
-        self.assertEqual('2015-07-17T16:10:00', glucose[-1]['date'])
-        self.assertEqual(150, glucose[-1]['glucose'])
+        self.assertEqual([{'date': '2015-07-17T12:00:00', 'amount': 150.0, 'unit': 'mg/dL'}], glucose)
 
     def test_no_input_glucose(self):
         normalized_history = [
@@ -319,8 +324,9 @@ class FutureGlucoseTestCase(unittest.TestCase):
             Schedule(self.carb_ratios['schedule'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'glucose': 150.0}, glucose[0])
-        self.assertDictEqual({'date': '2015-07-13T16:15:00', 'glucose': 110.0}, glucose[-1])
+        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictContainsSubset({'date': '2015-07-13T16:15:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(110.0, glucose[-1]['amount'])
 
     def test_fake_unit(self):
         normalized_history = [
@@ -336,19 +342,21 @@ class FutureGlucoseTestCase(unittest.TestCase):
 
         normalized_glucose = [
             {
-                "date": "2015-07-13T12:00:00",
+                "date": "2015-09-07T23:00:00",
                 "sgv": 150
             }
         ]
 
-        with self.assertRaises(ValueError):
-            future_glucose(
-                normalized_history,
-                normalized_glucose,
-                4,
-                Schedule(self.insulin_sensitivities['sensitivities']),
-                Schedule(self.carb_ratios['schedule'])
-            )
+        glucose = future_glucose(
+            normalized_history,
+            normalized_glucose,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities']),
+            Schedule(self.carb_ratios['schedule'])
+        )
+
+        self.assertDictEqual({'date': '2015-09-07T23:00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictEqual({'date': '2015-09-08T02:35:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[-1])
 
 
 class CalculateCarbEffectTestCase(unittest.TestCase):
@@ -410,6 +418,30 @@ class CalculateCarbEffectTestCase(unittest.TestCase):
 
         self.assertDictEqual({'date': '2015-09-07T22:20:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
         self.assertDictEqual({'date': '2015-09-08T01:35:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[-1])
+
+    def test_complicated_history(self):
+        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+            normalized_history = json.load(fp)
+
+        effect = calculate_carb_effect(
+            normalized_history,
+            Schedule(self.carb_ratios['schedule']),
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictEqual({'date': '2015-10-15T18:05:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
+        self.assertDictContainsSubset({'date': '2015-10-15T18:10:00', 'unit': 'mg/dL'}, effect[1])
+        self.assertAlmostEqual(0.0, effect[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'mg/dL'}, effect[3])
+        self.assertAlmostEqual(0.0, effect[3]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'mg/dL'}, effect[12])
+        self.assertAlmostEqual(1.19, effect[12]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T20:05:00', 'unit': 'mg/dL'}, effect[24])
+        self.assertAlmostEqual(102.83, effect[24]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T21:05:00', 'unit': 'mg/dL'}, effect[36])
+        self.assertAlmostEqual(345.54, effect[36]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T01:40:00', 'unit': 'mg/dL'}, effect[-1])
+        self.assertAlmostEqual(945.00, effect[-1]['amount'], delta=0.01)
 
 
 class CalculateInsulinEffectTestCase(unittest.TestCase):
@@ -722,6 +754,30 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
         self.assertEqual('2015-10-16T01:10:00', effect[-1]['date'])
         self.assertAlmostEqual(13.16, effect[-1]['amount'], delta=0.01)
 
+    def test_complicated_history(self):
+        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+            normalized_history = json.load(fp)
+
+        effect = calculate_insulin_effect(
+            normalized_history,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertDictEqual({'date': '2015-10-15T18:05:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
+        self.assertDictContainsSubset({'date': '2015-10-15T18:10:00', 'unit': 'mg/dL'}, effect[1])
+        self.assertAlmostEqual(0.0, effect[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'mg/dL'}, effect[3])
+        self.assertAlmostEqual(0.02, effect[3]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'mg/dL'}, effect[12])
+        self.assertAlmostEqual(1.44, effect[12]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T20:05:00', 'unit': 'mg/dL'}, effect[24])
+        self.assertAlmostEqual(-9.32, effect[24]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T21:05:00', 'unit': 'mg/dL'}, effect[36])
+        self.assertAlmostEqual(-96.69, effect[36]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T02:40:00', 'unit': 'mg/dL'}, effect[-1])
+        self.assertAlmostEqual(-591.15, effect[-1]['amount'], delta=0.01)
+
 
 class CalculateIOBTestCase(unittest.TestCase):
     def test_single_bolus(self):
@@ -893,3 +949,58 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictEqual({'date': '2015-09-07T22:20:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
         self.assertDictEqual({'date': '2015-09-08T02:35:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
 
+    def test_complicated_history(self):
+        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+            normalized_history = json.load(fp)
+
+        effect = calculate_iob(
+            normalized_history,
+            4
+        )
+
+        self.assertDictEqual({'date': '2015-10-15T18:05:00', 'amount': 0.0, 'unit': 'U'}, effect[0])
+        self.assertDictContainsSubset({'date': '2015-10-15T18:10:00', 'unit': 'U'}, effect[1])
+        self.assertAlmostEqual(0.0, effect[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'U'}, effect[3])
+        self.assertAlmostEqual(-0.02, effect[3]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'U'}, effect[12])
+        self.assertAlmostEqual(-0.47, effect[12]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T20:05:00', 'unit': 'U'}, effect[24])
+        self.assertAlmostEqual(5.70, effect[24]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T21:05:00', 'unit': 'U'}, effect[36])
+        self.assertAlmostEqual(7.27, effect[36]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T02:40:00', 'unit': 'U'}, effect[-1])
+        self.assertAlmostEqual(0, effect[-1]['amount'], delta=0.01)
+
+
+class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with open(get_file_at_path('fixtures/carb_effect.json')) as fp:
+            cls.carb_effect = json.load(fp)
+
+        with open(get_file_at_path('fixtures/insulin_effect.json')) as fp:
+            cls.insulin_effect = json.load(fp)
+
+    def test_carb_and_insulin(self):
+        glucose = calculate_glucose_from_effects(
+            [self.carb_effect, self.insulin_effect],
+            [{
+                "trend_arrow": "FLAT",
+                "system_time": "2015-10-16T16:51:46",
+                "display_time": "2015-10-16T09:51:08",
+                "glucose": 147
+            }]
+        )
+
+        self.assertDictEqual({'date': '2015-10-16T09:51:08', 'amount': 147.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictContainsSubset({'date': '2015-10-16T09:55:00', 'unit': 'mg/dL'}, glucose[1])
+        self.assertAlmostEqual(147.31, glucose[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T10:50:00', 'unit': 'mg/dL'}, glucose[12])
+        self.assertAlmostEqual(152.56, glucose[12]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T11:50:00', 'unit': 'mg/dL'}, glucose[24])
+        self.assertAlmostEqual(179.35, glucose[24]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T12:50:00', 'unit': 'mg/dL'}, glucose[36])
+        self.assertAlmostEqual(160.03, glucose[36]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T14:35:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(121.04, glucose[-1]['amount'], delta=0.01)
