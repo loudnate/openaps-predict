@@ -418,7 +418,7 @@ class glucose_from_effects(Use):
 
 # noinspection PyPep8Naming
 class glucose(Use):
-    """Predict glucose
+    """Predict glucose. This is a convenience shortcut for insulin and carb effect prediction.
 
     """
     def configure_app(self, app, parser):
