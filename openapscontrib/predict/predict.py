@@ -250,6 +250,64 @@ def cumulative_temp_basal_effect_at_time(event, t, t0, t1, insulin_sensitivity, 
     return event['amount'] / 60.0 * -insulin_sensitivity * ((t1 - t0) - int_iob)
 
 
+def calculate_momentum_effect(
+    recent_glucose,
+    dt=5,
+    prediction_time=30,
+    prediction_type='linear_regression'
+):
+    """Calculates predicted short-term blood glucose based on recent historical glucose data
+
+    :param recent_glucose: Glucose data in reverse-chronological order, cleaned by openapscontrib.glucosetools
+    :type recent_glucose: list(dict)
+    :param dt: The time differential for calculation and return value spacing in minutes
+    :type dt: int
+    :param prediction_time: The total length of forward trend extrapolation in minutes
+    :type prediction_time: int
+    :param prediction_type: The algorithm to use to predict future glucose
+    :type prediction_type: str
+    :return: A list of relative blood glucose values and their timestamps
+    :rtype: list(dict)
+    """
+    if len(recent_glucose) == 0:
+        return []
+
+    last_glucose_date, last_glucose_value = glucose_data_tuple(recent_glucose[0])
+    last_glucose_datetime = ceil_datetime_at_minute_interval(last_glucose_date, dt)
+    simulation_start = floor_datetime_at_minute_interval(last_glucose_date, dt)
+    simulation_end = last_glucose_datetime + datetime.timedelta(minutes=prediction_time)
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
+    simulation_count = len(simulation_minutes)
+    momentum_effect = [0.0] * simulation_count
+
+    # check that glucose values exist for the last three timestamps
+       # if they don't, return []    
+
+    # check if there was a calibration event in the last ~10 minutes
+       # if there was, return []   
+
+    if prediction_type == 'linear_regression':
+        # calculate momentum_effect[i]
+        glucose_slope = # caluclate slope from last three points
+        for i, timestamp in enumerate(simulation_timestamps):
+            t = (timestamp - simulation_start).total_seconds() / 60.0
+            effect =  last_glucose_value + t * glucose_slope # should this be in BG or dBG/dt?
+            momentum_effect[i] += effect
+
+        return [{
+            'date': timestamp.isoformat(),
+            'amount': momentum_effect[i],
+            'unit': Unit.milligrams_per_deciliter
+        } for i, timestamp in enumerate(simulation_timestamps)]
+    
+    # elif prediction_type == second_option: 
+        # code for a second algorithm 
+
+    else: # could this case, where a nonsense prediction_type is entered, be better handled with an assert somewhere? 
+       return []
+
+
 def calculate_carb_effect(
     normalized_history,
     carb_ratio_schedule,
