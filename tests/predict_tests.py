@@ -91,6 +91,52 @@ class FutureGlucoseTestCase(unittest.TestCase):
         self.assertDictContainsSubset({'date': '2015-07-13T15:10:00', 'unit': 'mg/dL'}, glucose[-1])
         self.assertAlmostEqual(70.0, glucose[-1]['amount'])
 
+    def test_aware_dates(self):
+        normalized_history = [
+            {
+                "type": "TempBasal",
+                "start_at": "2015-07-13T10:00:00+00:00",
+                "end_at": "2015-07-13T11:00:00+00:00",
+                "amount": 1.0,
+                "unit": "U/hour"
+            },
+            {
+                "type": "Bolus",
+                "start_at": "2015-07-13T11:00:00+00:00",
+                "end_at": "2015-07-13T11:00:00+00:00",
+                "amount": 1.0,
+                "unit": "U"
+            }
+        ]
+
+        normalized_glucose = [
+            {
+                "_id": "562977cc1c1181016e00554c",
+                "device": "dexcom",
+                "date": 1445558216000,
+                "dateString": "2015-07-13T10:00:00+00:00",
+                "direction": "Flat",
+                "noise": 1,
+                "type": "sgv",
+                "filtered": 168640,
+                "unfiltered": 168032,
+                "rssi": 205,
+                "glucose": 150
+            }
+        ]
+
+        glucose = future_glucose(
+            normalized_history,
+            normalized_glucose,
+            4,
+            Schedule(self.insulin_sensitivities['sensitivities']),
+            Schedule(self.carb_ratios['schedule'])
+        )
+
+        self.assertDictEqual({'date': '2015-07-13T10:00:00+00:00', 'amount': 150.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictContainsSubset({'date': '2015-07-13T15:10:00+00:00', 'unit': 'mg/dL'}, glucose[-1])
+        self.assertAlmostEqual(70.0, glucose[-1]['amount'])
+
     def test_future_bolus(self):
         normalized_history = [
             {

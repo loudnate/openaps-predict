@@ -9,6 +9,7 @@ import ast
 import argparse
 from datetime import datetime, timedelta
 from dateutil.parser import parse
+from dateutil.tz import gettz
 import json
 import os
 
@@ -75,6 +76,21 @@ def _opt_json_file(filename):
     """
     if filename:
         return _json_file(filename)
+
+
+def make_naive(value, timezone=None):
+    """
+    Makes an aware datetime.datetime naive in a given time zone.
+    """
+    if timezone is None:
+        timezone = gettz()
+    # If `value` is naive, astimezone() will raise a ValueError,
+    # so we don't need to perform a redundant check.
+    value = value.astimezone(timezone)
+    if hasattr(timezone, 'normalize'):
+        # This method is available for pytz time zones.
+        value = timezone.normalize(value)
+    return value.replace(tzinfo=None)
 
 
 # noinspection PyPep8Naming
@@ -365,15 +381,32 @@ class glucose_from_effects(Use):
         :return:
         :rtype: tuple(list, dict)
         """
-        effects = params['effects']
+        effect_files = params['effects']
 
-        if isinstance(effects, str):
-            effects = ast.literal_eval(effects)
+        if isinstance(effect_files, str):
+            effect_files = ast.literal_eval(effect_files)
 
-        args = (
-            [_json_file(f) for f in effects],
-            _json_file(params['glucose'])
-        )
+        recent_glucose = _json_file(params['glucose'])
+
+        if len(recent_glucose) > 0:
+            glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
+            last_glucose_datetime = parse(glucose_data_tuple(recent_glucose[0])[0])
+
+            if last_glucose_datetime.utcoffset() is not None:
+                last_glucose_datetime = make_naive(last_glucose_datetime)
+
+            assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
+                'Glucose data is more than 15 minutes old'
+
+        effects = []
+
+        for f in effect_files:
+            file_time = datetime.fromtimestamp(os.path.getmtime(f))
+            assert datetime.now() - file_time < timedelta(minutes=5), '{} is more than 5 minutes old'.format(f)
+
+            effects.append(_json_file(f))
+
+        args = (effects, recent_glucose)
 
         return args, {}
 
@@ -469,6 +502,10 @@ class glucose(Use):
         if len(recent_glucose) > 0:
             glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
             last_glucose_datetime = parse(glucose_data_tuple(recent_glucose[0])[0])
+
+            if last_glucose_datetime.utcoffset() is not None:
+                last_glucose_datetime = make_naive(last_glucose_datetime)
+
             assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
                 'Glucose data is more than 15 minutes old'
 
