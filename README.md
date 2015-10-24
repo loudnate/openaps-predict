@@ -101,8 +101,9 @@ $ openaps report add insulin_effect_without_future_basal.json JSON predict walsh
 
 $ openaps report add carb_effect.json JSON predict scheiner_carb_effect \
         normalize_history.json \
-		--carb-ratios read_carb_ratios.json
-		--insulin-sensitivities read_insulin_sensitivies.json
+		--carb-ratios read_carb_ratios.json \
+		--insulin-sensitivities read_insulin_sensitivies.json \
+		--absorption-time 180
 
 $ openaps report add predict_glucose_without_future_basal JSON predict glucose_from_effects \
         insulin_effect_without_future_basal.json \
