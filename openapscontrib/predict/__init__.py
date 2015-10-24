@@ -5,15 +5,20 @@ predict - tools for predicting glucose trends
 """
 from .version import __version__
 
+import ast
 import argparse
 from datetime import datetime, timedelta
 from dateutil.parser import parse
+from dateutil.tz import gettz
 import json
 import os
 
 from openaps.uses.use import Use
 
 from predict import Schedule
+from predict import calculate_carb_effect
+from predict import calculate_glucose_from_effects
+from predict import calculate_insulin_effect
 from predict import calculate_iob
 from predict import future_glucose
 from predict import glucose_data_tuple
@@ -42,7 +47,7 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return [glucose, walsh_iob]
+    return [glucose, glucose_from_effects, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
 
 
 def _opt_date(timestamp):
@@ -71,6 +76,188 @@ def _opt_json_file(filename):
     """
     if filename:
         return _json_file(filename)
+
+
+def make_naive(value, timezone=None):
+    """
+    Makes an aware datetime.datetime naive in a given time zone.
+    """
+    if timezone is None:
+        timezone = gettz()
+    # If `value` is naive, astimezone() will raise a ValueError,
+    # so we don't need to perform a redundant check.
+    value = value.astimezone(timezone)
+    if hasattr(timezone, 'normalize'):
+        # This method is available for pytz time zones.
+        value = timezone.normalize(value)
+    return value.replace(tzinfo=None)
+
+
+# noinspection PyPep8Naming
+class scheiner_carb_effect(Use):
+    """Predict carb effect on glucose, using the Scheiner GI curve
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'history',
+            help='JSON-encoded pump history data file, normalized by openapscontrib.mmhistorytools'
+        )
+
+        parser.add_argument(
+            '--carb-ratios',
+            help='JSON-encoded carb ratio schedule file'
+        )
+
+        parser.add_argument(
+            '--insulin-sensitivities',
+            help='JSON-encoded insulin sensitivities schedule file'
+        )
+
+        parser.add_argument(
+            '--absorption-time',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The total length of carbohydrate absorption in minutes'
+        )
+
+        parser.add_argument(
+            '--absorption-delay',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The delay time between a dosing event and when absorption begins'
+        )
+
+    def get_params(self, args):
+        params = super(scheiner_carb_effect, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('history', 'carb_ratios', 'insulin_sensitivities', 'absorption_time', 'absorption_delay'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        args = (
+            _json_file(params['history']),
+            Schedule(_json_file(params['carb_ratios'])['schedule']),
+            Schedule(_json_file(params['insulin_sensitivities'])['sensitivities'])
+        )
+
+        kwargs = dict()
+
+        if params.get('absorption_time'):
+            kwargs.update(absorption_duration=params.get('absorption_time'))
+
+        if params.get('absorption_delay'):
+            kwargs.update(absorption_delay=params.get('absorption_delay'))
+
+        return args, kwargs
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_carb_effect(*args, **kwargs)
+
+
+# noinspection PyPep8Naming
+class walsh_insulin_effect(Use):
+    """Predict insulin effect on glucose, using Walsh's IOB algorithm
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'history',
+            help='JSON-encoded pump history data file, normalized by openapscontrib.mmhistorytools'
+        )
+
+        parser.add_argument(
+            '--settings',
+            nargs=argparse.OPTIONAL,
+            help='JSON-encoded pump settings file, optional if --insulin-action-curve is set'
+        )
+
+        parser.add_argument(
+            '--insulin-action-curve',
+            nargs=argparse.OPTIONAL,
+            type=float,
+            choices=range(3, 7),
+            help='Insulin action curve, optional if --settings is set'
+        )
+
+        parser.add_argument(
+            '--insulin-sensitivities',
+            help='JSON-encoded insulin sensitivities schedule file'
+        )
+
+        parser.add_argument(
+            '--basal-dosing-end',
+            nargs=argparse.OPTIONAL,
+            help='The timestamp at which temp basal dosing should be assumed to end, '
+                 'as a JSON-encoded pump clock file'
+        )
+
+        parser.add_argument(
+            '--absorption-delay',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The delay time between a dosing event and when absorption begins'
+        )
+
+    def get_params(self, args):
+        params = super(walsh_insulin_effect, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('history', 'settings', 'insulin_action_curve', 'insulin_sensitivities', 'basal_dosing_end', 'absorption_delay'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        args = (
+            _json_file(params['history']),
+            params.get('insulin_action_curve', None) or
+            _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
+            Schedule(_json_file(params['insulin_sensitivities'])['sensitivities'])
+        )
+
+        kwargs = dict(
+            basal_dosing_end=_opt_date(_opt_json_file(params.get('basal_dosing_end')))
+        )
+
+        if params.get('absorption_delay'):
+            kwargs.update(absorption_delay=params.get('absorption_delay'))
+
+        return args, kwargs
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_insulin_effect(*args, **kwargs)
 
 
 # noinspection PyPep8Naming
@@ -156,8 +343,82 @@ class walsh_iob(Use):
 
 
 # noinspection PyPep8Naming
+class glucose_from_effects(Use):
+    """Predict glucose from one or more effect schedules
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'effects',
+            nargs=argparse.ONE_OR_MORE,
+            help='JSON-encoded effect schedules data files'
+        )
+
+        parser.add_argument(
+            '--glucose',
+            help='JSON-encoded glucose data file in reverse-chronological order'
+        )
+
+    def get_params(self, args):
+        params = super(glucose_from_effects, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('effects', 'glucose'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        effect_files = params['effects']
+
+        if isinstance(effect_files, str):
+            effect_files = ast.literal_eval(effect_files)
+
+        recent_glucose = _json_file(params['glucose'])
+
+        if len(recent_glucose) > 0:
+            glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
+            last_glucose_datetime = parse(glucose_data_tuple(recent_glucose[0])[0])
+
+            if last_glucose_datetime.utcoffset() is not None:
+                last_glucose_datetime = make_naive(last_glucose_datetime)
+
+            assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
+                'Glucose data is more than 15 minutes old'
+
+        effects = []
+
+        for f in effect_files:
+            file_time = datetime.fromtimestamp(os.path.getmtime(f))
+            assert datetime.now() - file_time < timedelta(minutes=5), '{} is more than 5 minutes old'.format(f)
+
+            effects.append(_json_file(f))
+
+        args = (effects, recent_glucose)
+
+        return args, {}
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_glucose_from_effects(*args, **kwargs)
+
+
+# noinspection PyPep8Naming
 class glucose(Use):
-    """Predict glucose
+    """Predict glucose. This is a convenience shortcut for insulin and carb effect prediction.
 
     """
     def configure_app(self, app, parser):
@@ -240,7 +501,11 @@ class glucose(Use):
 
         if len(recent_glucose) > 0:
             glucose_file_time = datetime.fromtimestamp(os.path.getmtime(params['glucose']))
-            last_glucose_datetime, _ = glucose_data_tuple(recent_glucose[0])
+            last_glucose_datetime = parse(glucose_data_tuple(recent_glucose[0])[0])
+
+            if last_glucose_datetime.utcoffset() is not None:
+                last_glucose_datetime = make_naive(last_glucose_datetime)
+
             assert abs(glucose_file_time - last_glucose_datetime) < timedelta(minutes=15), \
                 'Glucose data is more than 15 minutes old'
 
