@@ -305,7 +305,7 @@ def calculate_momentum_effect(
     glucose_slope, _, _, _, _ = linregress(fit_x, fit_y)
 
     for i, timestamp in enumerate(simulation_timestamps):
-        t = (timestamp - simulation_start).total_seconds() / 60.0
+        t = (timestamp - simulation_start).total_seconds()
         momentum_effect[i] = t * glucose_slope
 
     return [{
