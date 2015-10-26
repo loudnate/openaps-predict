@@ -5,6 +5,9 @@ addons:
     apt:
         packages:
           - python-scipy
+          - gfortran
+          - libatlas-dev
+          - liblapack-dev
 install:
     python setup.py install
 script:
