@@ -114,10 +114,9 @@ class glucose_momentum_effect(Use):
         )
 
         parser.add_argument(
-            '--prediction-type',
-            type=str,
+            '--calibrations',
             nargs=argparse.OPTIONAL,
-            help='The algorithm to use to predict future glucose; choose from: linear_regression, ...'
+            help='JSON-encoded sensor calibrations data file in reverse-chronological order'
         )
 
     def get_params(self, args):
@@ -125,7 +124,7 @@ class glucose_momentum_effect(Use):
 
         args_dict = dict(**args.__dict__)
 
-        for key in ('glucose', 'prediction-time', 'prediction-type'):
+        for key in ('glucose', 'prediction-time', 'calibrations'):
             value = args_dict.get(key)
             if value is not None:
                 params[key] = value
@@ -148,10 +147,10 @@ class glucose_momentum_effect(Use):
         kwargs = dict()
 
         if params.get('prediction-time'):
-            kwargs.update(prediction_time=params.get('prediction-time'))
+            kwargs.update(prediction_time=params['prediction-time'])
 
-        if params.get('prediction-type'):
-            kwargs.update(prediction_type=params.get('prediction-type'))
+        if params.get('calibrations'):
+            kwargs.update(recent_calibrations=_opt_json_file(params['calibrations']) or ())
 
         return args, kwargs
 

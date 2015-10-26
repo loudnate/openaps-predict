@@ -5,7 +5,7 @@ long_description = '''openaps predict plugin
 This package is a vendor plugin for openaps that provides tools for predicting glucose trends.
 '''
 
-requires = ['openaps', 'python-dateutil']
+requires = ['openaps', 'python-dateutil', 'scipy']
 
 __version__ = None
 exec(open('openapscontrib/predict/version.py').read())
