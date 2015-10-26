@@ -6,6 +6,7 @@ virtualenv:
 addons:
   apt:
     packages:
+      - python-pip
       - python-scipy
 install:
   python setup.py install
