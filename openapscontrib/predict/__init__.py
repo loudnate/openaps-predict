@@ -109,7 +109,8 @@ class glucose_momentum_effect(Use):
         parser.add_argument(
             '--prediction-time',
             type=int,
-            help='The total length of forward trend extrapolation in minutes'
+            nargs=argparse.OPTIONAL,
+            help='The total length of forward trend extrapolation in minutes. Defaults to 30.'
         )
 
         parser.add_argument(
@@ -143,9 +144,10 @@ class glucose_momentum_effect(Use):
             _json_file(params['glucose']),
         )
 
-        kwargs = dict(
-            prediction_time=params['prediction_time']
-        )
+        kwargs = dict()
+
+        if params.get('prediction_time'):
+            kwargs.update(prediction_time=params['prediction_time'])
 
         if params.get('calibrations'):
             kwargs.update(recent_calibrations=_opt_json_file(params['calibrations']) or ())

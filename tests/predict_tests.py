@@ -8,6 +8,7 @@ from openapscontrib.predict.predict import calculate_carb_effect
 from openapscontrib.predict.predict import calculate_glucose_from_effects
 from openapscontrib.predict.predict import calculate_insulin_effect
 from openapscontrib.predict.predict import calculate_iob
+from openapscontrib.predict.predict import calculate_momentum_effect
 from openapscontrib.predict.predict import future_glucose
 
 
@@ -1050,3 +1051,328 @@ class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
         self.assertAlmostEqual(160.03, glucose[36]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T14:35:00', 'unit': 'mg/dL'}, glucose[-1])
         self.assertAlmostEqual(121.04, glucose[-1]['amount'], delta=0.01)
+
+
+class CalculateMomentumEffectTestCase(unittest.TestCase):
+    def test_rising_glucose(self):
+        glucose = [
+            {
+                'date': '2015-10-25T19:30:00',
+                'amount': 129
+            },
+            {
+                'date': '2015-10-25T19:25:00',
+                'amount': 126
+            },
+            {
+                'date': '2015-10-25T19:20:00',
+                'amount': 123
+            },
+            {
+                'date': '2015-10-25T19:15:00',
+                'amount': 120
+            }
+        ]
+
+        momentum = calculate_momentum_effect(glucose)
+
+        self.assertListEqual(
+            [
+                {
+                    'date': '2015-10-25T19:30:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:35:00',
+                    'amount': 3,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:40:00',
+                    'amount': 6,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:45:00',
+                    'amount': 9,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:50:00',
+                    'amount': 12,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:55:00',
+                    'amount': 15,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T20:00:00',
+                    'amount': 18,
+                    'unit': 'mg/dL'
+                }
+            ],
+            momentum
+        )
+
+    def test_bouncing_glucose(self):
+        glucose = [
+            {
+                'date': '2015-10-25T19:30:00',
+                'amount': 129
+            },
+            {
+                'date': '2015-10-25T19:25:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:20:00',
+                'amount': 123
+            },
+            {
+                'date': '2015-10-25T19:15:00',
+                'amount': 126
+            }
+        ]
+
+        momentum = calculate_momentum_effect(glucose)
+
+        self.assertListEqual(
+            [
+                {
+                    'date': '2015-10-25T19:30:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:35:00',
+                    'amount': 3,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:40:00',
+                    'amount': 6,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:45:00',
+                    'amount': 9,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:50:00',
+                    'amount': 12,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:55:00',
+                    'amount': 15,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T20:00:00',
+                    'amount': 18,
+                    'unit': 'mg/dL'
+                }
+            ],
+            momentum
+        )
+
+    def test_falling_glucose(self):
+        glucose = [
+            {
+                'date': '2015-10-25T19:30:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:25:00',
+                'amount': 123
+            },
+            {
+                'date': '2015-10-25T19:20:00',
+                'amount': 126
+            },
+            {
+                'date': '2015-10-25T19:15:00',
+                'amount': 129
+            }
+        ]
+
+        momentum = calculate_momentum_effect(glucose)
+
+        self.assertListEqual(
+            [
+                {
+                    'date': '2015-10-25T19:30:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:35:00',
+                    'amount': -3,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:40:00',
+                    'amount': -6,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:45:00',
+                    'amount': -9,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:50:00',
+                    'amount': -12,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:55:00',
+                    'amount': -15,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T20:00:00',
+                    'amount': -18,
+                    'unit': 'mg/dL'
+                }
+            ],
+            momentum
+        )
+
+    def test_stable_glucose(self):
+        glucose = [
+            {
+                'date': '2015-10-25T19:30:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:25:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:20:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:15:00',
+                'amount': 123
+            }
+        ]
+
+        momentum = calculate_momentum_effect(glucose)
+
+        self.assertListEqual(
+            [
+                {
+                    'date': '2015-10-25T19:30:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:35:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:40:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:45:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:50:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T19:55:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                },
+                {
+                    'date': '2015-10-25T20:00:00',
+                    'amount': 0.0,
+                    'unit': 'mg/dL'
+                }
+            ],
+            momentum
+        )
+
+    def test_missing_number_of_entries(self):
+        glucose = [
+            {
+                'date': '2015-10-25T19:30:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:25:00',
+                'amount': 120
+            }
+        ]
+
+        momentum = calculate_momentum_effect(glucose)
+
+        self.assertListEqual([], momentum)
+
+    def test_missing_range_of_entries(self):
+        glucose = [
+            {
+                'date': '2015-10-25T19:30:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:20:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:14:59',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:10:00',
+                'amount': 123
+            }
+        ]
+
+        momentum = calculate_momentum_effect(glucose)
+
+        self.assertListEqual([], momentum)
+
+    def test_recent_calibration(self):
+        glucose = [
+            {
+                'date': '2015-10-25T19:30:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:25:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:20:00',
+                'amount': 120
+            },
+            {
+                'date': '2015-10-25T19:15:00',
+                'amount': 123
+            }
+        ]
+
+        calibrations = [
+            {
+                'date': '2015-10-25T19:17:00',
+                'amount': 120
+            }
+        ]
+
+        momentum = calculate_momentum_effect(glucose, recent_calibrations=calibrations)
+
+        self.assertListEqual([], momentum)
