@@ -277,7 +277,7 @@ def calculate_momentum_effect(
     last_glucose_date, last_glucose_value = glucose_data_tuple(recent_glucose[0])
     last_glucose_datetime = parse(last_glucose_date)
     simulation_start = floor_datetime_at_minute_interval(last_glucose_datetime, dt)
-    simulation_end = ceil_datetime_at_minute_interval(last_glucose_datetime, dt) + datetime.timedelta(minutes=prediction_time)
+    simulation_end = ceil_datetime_at_minute_interval(last_glucose_datetime, dt) + datetime.timedelta(minutes=float(prediction_time))
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
     simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
     simulation_count = len(simulation_minutes)
