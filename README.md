@@ -1,5 +1,5 @@
 # predict
-An [openaps](https://github.com/openaps/openaps) plugin for predicting glucose trends from historical input
+An [openaps](https://github.com/openaps/openaps) plugin for predicting glucose effects and trends from historical input
 
 [![Build Status](https://travis-ci.org/loudnate/openaps-predict.svg)](https://travis-ci.org/loudnate/openaps-predict)
 
@@ -31,7 +31,7 @@ $ openaps use predict -h
 usage: openaps-use predict [-h] USAGE ...
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help            show this help message and exit
 
 ## Device predict:
   vendor openapscontrib.predict
@@ -42,38 +42,47 @@ optional arguments:
 
 
 
-  USAGE       Usage Details
-    glucose   Predict glucose
+  USAGE                 Usage Details
+    glucose             Predict glucose. This is a convenience shortcut for
+                        insulin and carb effect prediction.
+    glucose_from_effects
+                        Predict glucose from one or more effect schedules
+    scheiner_carb_effect
+                        Predict carb effect on glucose, using the Scheiner GI
+                        curve
+    walsh_insulin_effect
+                        Predict insulin effect on glucose, using Walsh's IOB
+                        algorithm
+    walsh_iob           Predict IOB using Walsh's algorithm
 ```
 
 Use the command help menu to see available arguments.
 ```bash
-$ openaps use predict glucose -h
 usage: openaps-use predict glucose [-h] [--settings [SETTINGS]]
                                    [--insulin-action-curve [{3,4,5,6}]]
                                    [--insulin-sensitivities INSULIN_SENSITIVITIES]
                                    [--carb-ratios CARB_RATIOS]
                                    [--basal-dosing-end [BASAL_DOSING_END]]
-                                   normalized-history normalized-glucose
+                                   pump-history glucose
 
-Predict glucose
+Predict glucose. This is a convenience shortcut for insulin and carb effect prediction.
 
 positional arguments:
   pump-history          JSON-encoded pump history data file, normalized by
                         openapscontrib.mmhistorytools
-  glucose               JSON-encoded glucose data file in
-                        reverse-chronological order
+  glucose               JSON-encoded glucose data file in reverse-
+                        chronological order
 
 optional arguments:
   -h, --help            show this help message and exit
   --settings [SETTINGS]
-                        JSON-encoded pump settings file, optional if --idur is
-                        set
-  --insulin-action-curve [{3,4,5,6}], --idur [{3,4,5,6}]
+                        JSON-encoded pump settings file, optional if
+                        --insulin-action-curve is set
+  --insulin-action-curve [{3,4,5,6}]
                         Insulin action curve, optional if --settings is set
-  --insulin-sensitivities INSULIN_SENSITIVITIES, --sensf INSULIN_SENSITIVITIES
+  --insulin-sensitivities INSULIN_SENSITIVITIES
                         JSON-encoded insulin sensitivities schedule file
-  --carb-ratios CARB_RATIOS, --cratio CARB_RATIOS
+  --carb-ratios CARB_RATIOS
                         JSON-encoded carb ratio schedule file
   --basal-dosing-end [BASAL_DOSING_END]
                         The timestamp at which temp basal dosing should be
@@ -82,22 +91,24 @@ optional arguments:
 
 ## Examples
 
-Add a report flow to predict future glucose from pump history, with and without future basal dosing:
+Add a report flow to predict future glucose from pump history:
 ```
-$ openaps report add predict_glucose.json JSON predict glucose \
+$ openaps report add insulin_effect_without_future_basal.json JSON predict walsh_insulin_effect \
         normalize_history.json \
-		recent_glucose.json \
 		--settings read_settings.json \
 		--insulin-sensitivities read_insulin_sensitivies.json \
-		--carb-ratios read_carb_ratios.json
-
-$ openaps report add predict_glucose_without_future_basal.json JSON predict glucose \
-        normalize_history.json \
-		recent_glucose.json \
-		--settings read_settings.json \
-		--insulin-sensitivities read_insulin_sensitivies.json \
-		--carb-ratios read_carb_ratios.json
 		--basal-dosing-end read_clock.json
+
+$ openaps report add carb_effect.json JSON predict scheiner_carb_effect \
+        normalize_history.json \
+		--carb-ratios read_carb_ratios.json \
+		--insulin-sensitivities read_insulin_sensitivies.json \
+		--absorption-time 180
+
+$ openaps report add predict_glucose_without_future_basal JSON predict glucose_from_effects \
+        insulin_effect_without_future_basal.json \
+        carb_effect.json \
+        --glucose clean_glucose.json
 ```
 
 ## Contributing
