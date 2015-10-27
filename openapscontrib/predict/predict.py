@@ -556,7 +556,7 @@ def calculate_iob(
     } for i, timestamp in enumerate(simulation_timestamps)]
 
 
-def calculate_glucose_from_effects(effects, recent_glucose):
+def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
     """Calculates predicted glucose values from effect schedules starting from the end of measured glucose history
 
     Each effect should be a list of dicts containing at least 2 keys:
@@ -567,10 +567,12 @@ def calculate_glucose_from_effects(effects, recent_glucose):
 
     When working with multiple lists, they should have the same dt interval to ensure a smooth output.
 
-    :param effects: A list of timestamps and glucose values, relative to 0, in chronological order
+    :param effects: A list of lists of timestamps and glucose values, relative to 0, in chronological order
     :type effects: list(list(dict))
     :param recent_glucose: Historical glucose in reverse-chronological order, cleaned by openapscontrib.glucosetools
     :type recent_glucose: list(dict)
+    :param momentum: A list of relative glucose effect values, in chronological order, describing the momentum
+    :type momentum: list(dict)
     :return: A list of predicted glucose values
     :rtype: list(dict)
     """

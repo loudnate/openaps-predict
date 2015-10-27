@@ -427,12 +427,17 @@ class glucose_from_effects(Use):
             help='JSON-encoded glucose data file in reverse-chronological order'
         )
 
+        parser.add_argument(
+            '--momentum',
+            help='JSON-encoded momentum effect schedule data file'
+        )
+
     def get_params(self, args):
         params = super(glucose_from_effects, self).get_params(args)
 
         args_dict = dict(**args.__dict__)
 
-        for key in ('effects', 'glucose'):
+        for key in ('effects', 'glucose', 'momentum'):
             value = args_dict.get(key)
             if value is not None:
                 params[key] = value
@@ -474,8 +479,15 @@ class glucose_from_effects(Use):
             effects.append(_json_file(f))
 
         args = (effects, recent_glucose)
+        kwargs = {}
 
-        return args, {}
+        momentum_file_name = params.get('momentum')
+        if momentum_file_name:
+            kwargs['momentum'] = _opt_json_file(params.get('momentum'))
+            file_time = datetime.fromtimestamp(os.path.getmtime(params['momentum']))
+            assert datetime.now() - file_time < timedelta(minutes=5), '{} is more than 5 minutes old'.format()
+
+        return args, kwargs
 
     def main(self, args, app):
         args, kwargs = self.get_program(self.get_params(args))
