@@ -1346,30 +1346,40 @@ class CalculateMomentumEffectTestCase(unittest.TestCase):
 
         self.assertListEqual([], momentum)
 
-    def test_recent_calibration(self):
+    def test_recent_calibrations(self):
+        with open(get_file_at_path('fixtures/cgms_calibrations.json')) as fp:
+            calibrations = json.load(fp)
+
         glucose = [
             {
-                'date': '2015-10-25T19:30:00',
-                'amount': 120
+                "trend_arrow": "FLAT",
+                "system_time": "2015-10-28T01:16:47",
+                "display_time": "2015-10-27T17:17:38",
+                "glucose": 147
             },
             {
-                'date': '2015-10-25T19:25:00',
-                'amount': 120
+                "trend_arrow": "FLAT",
+                "system_time": "2015-10-28T01:16:47",
+                "display_time": "2015-10-27T17:17:38",
+                "glucose": 153
             },
             {
-                'date': '2015-10-25T19:20:00',
-                'amount': 120
+                "trend_arrow": "FLAT",
+                "system_time": "2015-10-28T01:11:46",
+                "display_time": "2015-10-27T17:12:37",
+                "glucose": 146
             },
             {
-                'date': '2015-10-25T19:15:00',
-                'amount': 123
-            }
-        ]
-
-        calibrations = [
+                "trend_arrow": "FLAT",
+                "system_time": "2015-10-28T01:06:45",
+                "display_time": "2015-10-27T17:07:37",
+                "glucose": 148
+            },
             {
-                'date': '2015-10-25T19:17:00',
-                'amount': 120
+                "trend_arrow": "FLAT",
+                "system_time": "2015-10-28T01:01:46",
+                "display_time": "2015-10-27T17:02:38",
+                "glucose": 149
             }
         ]
 

@@ -297,7 +297,7 @@ def calculate_momentum_effect(
 
     # check if there was a calibration event in the last ~10 minutes
     if len(recent_calibrations) > 0:
-        last_calibration_datetime = parse(glucose_data_tuple(recent_calibrations[-1])[0])
+        last_calibration_datetime = parse(glucose_data_tuple(recent_calibrations[0])[0])
         if abs(last_glucose_datetime - last_calibration_datetime) < datetime.timedelta(minutes=dt * fit_points):
             return []
 
