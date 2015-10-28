@@ -147,7 +147,7 @@ class glucose_momentum_effect(Use):
         kwargs = dict()
 
         if params.get('prediction_time'):
-            kwargs.update(prediction_time=params['prediction_time'])
+            kwargs.update(prediction_time=int(params['prediction_time']))
 
         if params.get('calibrations'):
             kwargs.update(recent_calibrations=_opt_json_file(params['calibrations']) or ())
