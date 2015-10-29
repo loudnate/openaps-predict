@@ -276,7 +276,7 @@ def calculate_momentum_effect(
 
     last_glucose_date, last_glucose_value = glucose_data_tuple(recent_glucose[0])
     last_glucose_datetime = parse(last_glucose_date)
-    simulation_start = ceil_datetime_at_minute_interval(last_glucose_datetime, dt)
+    simulation_start = floor_datetime_at_minute_interval(last_glucose_datetime, dt)
     simulation_end = simulation_start + datetime.timedelta(minutes=prediction_time)
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
     simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
@@ -305,7 +305,7 @@ def calculate_momentum_effect(
     glucose_slope, _, _, _, _ = linregress(fit_x, fit_y)
 
     for i, timestamp in enumerate(simulation_timestamps):
-        t = (timestamp - last_glucose_datetime).total_seconds()
+        t = (timestamp - simulation_start).total_seconds()
         momentum_effect[i] = t * glucose_slope
 
     return [{
@@ -593,13 +593,22 @@ def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
     # Blend the momentum list linearly into the effect list
     last_momentum_amount = 0
     momentum_count = float(len(momentum))
-    for i, entry in enumerate(momentum):
-        d_amount = entry['amount'] - last_momentum_amount
-        last_momentum_amount = entry['amount']
-        blend_split = (momentum_count - (i + 1.0)) / momentum_count
-        effect_blend = (1.0 - blend_split) * timestamp_to_effect_dict.get(entry['date'], 0.0)
-        momentum_blend = blend_split * d_amount
-        timestamp_to_effect_dict[entry['date']] = momentum_blend + effect_blend
+
+    if momentum_count > 1.0:
+        # first_momentum_datetime = parse(momentum[0]['date'])
+        # momentum_dt_s = (first_momentum_datetime - parse(momentum[1]['date'])).total_seconds()
+        # momentum_offset_s = (first_momentum_datetime - parse(last_glucose_date)).total_seconds()
+        # d_blend = 1.0 / (momentum_count - 1.0)
+        # blend_offset = momentum_offset_s / momentum_dt_s * d_blend
+
+        for i, entry in enumerate(momentum):
+            d_amount = entry['amount'] - last_momentum_amount
+            last_momentum_amount = entry['amount']
+
+            blend_split = max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 1.0))
+            effect_blend = (1.0 - blend_split) * timestamp_to_effect_dict.get(entry['date'], 0.0)
+            momentum_blend = blend_split * d_amount
+            timestamp_to_effect_dict[entry['date']] = momentum_blend + effect_blend
 
     combined_effect = sorted(timestamp_to_effect_dict.items(), key=lambda t: t[0])
 

@@ -1043,6 +1043,8 @@ class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
         self.assertDictEqual({'date': '2015-10-16T09:51:08', 'amount': 147.0, 'unit': 'mg/dL'}, glucose[0])
         self.assertDictContainsSubset({'date': '2015-10-16T09:55:00', 'unit': 'mg/dL'}, glucose[1])
         self.assertAlmostEqual(147.31, glucose[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T10:00:00', 'unit': 'mg/dL'}, glucose[2])
+        self.assertAlmostEqual(147.44, glucose[2]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T10:50:00', 'unit': 'mg/dL'}, glucose[12])
         self.assertAlmostEqual(152.56, glucose[12]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T11:50:00', 'unit': 'mg/dL'}, glucose[24])
@@ -1095,24 +1097,26 @@ class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
             [self.carb_effect, self.insulin_effect],
             [{
                 "trend_arrow": "FLAT",
-                "system_time": "2015-10-16T16:51:46",
-                "display_time": "2015-10-16T09:51:08",
+                "system_time": "2015-10-16T16:54:46",
+                "display_time": "2015-10-16T09:54:08",
                 "glucose": 147
             }],
             momentum=momentum
         )
 
-        self.assertDictEqual({'date': '2015-10-16T09:51:08', 'amount': 147.0, 'unit': 'mg/dL'}, glucose[0])
+        self.assertDictEqual({'date': '2015-10-16T09:54:08', 'amount': 147.0, 'unit': 'mg/dL'}, glucose[0])
         self.assertDictContainsSubset({'date': '2015-10-16T09:55:00', 'unit': 'mg/dL'}, glucose[1])
-        self.assertAlmostEqual(147.09, glucose[1]['amount'], delta=0.01)
+        self.assertAlmostEqual(147.05, glucose[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T10:00:00', 'unit': 'mg/dL'}, glucose[2])
+        self.assertAlmostEqual(147.09, glucose[2]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T10:50:00', 'unit': 'mg/dL'}, glucose[12])
-        self.assertAlmostEqual(152.32, glucose[12]['amount'], delta=0.01)
+        self.assertAlmostEqual(152.28, glucose[12]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T11:50:00', 'unit': 'mg/dL'}, glucose[24])
-        self.assertAlmostEqual(179.11, glucose[24]['amount'], delta=0.01)
+        self.assertAlmostEqual(179.07, glucose[24]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T12:50:00', 'unit': 'mg/dL'}, glucose[36])
-        self.assertAlmostEqual(159.78, glucose[36]['amount'], delta=0.01)
+        self.assertAlmostEqual(159.74, glucose[36]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T14:35:00', 'unit': 'mg/dL'}, glucose[-1])
-        self.assertAlmostEqual(120.79, glucose[-1]['amount'], delta=0.01)
+        self.assertAlmostEqual(120.75, glucose[-1]['amount'], delta=0.01)
 
     def test_momentum_up(self):
         momentum = [
@@ -1166,15 +1170,17 @@ class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
 
         self.assertDictEqual({'date': '2015-10-16T09:51:08', 'amount': 147.0, 'unit': 'mg/dL'}, glucose[0])
         self.assertDictContainsSubset({'date': '2015-10-16T09:55:00', 'unit': 'mg/dL'}, glucose[1])
-        self.assertAlmostEqual(149.23, glucose[1]['amount'], delta=0.01)
+        self.assertAlmostEqual(149.55, glucose[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T10:00:00', 'unit': 'mg/dL'}, glucose[2])
+        self.assertAlmostEqual(151.59, glucose[2]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T10:50:00', 'unit': 'mg/dL'}, glucose[12])
-        self.assertAlmostEqual(158.75, glucose[12]['amount'], delta=0.01)
+        self.assertAlmostEqual(159.78, glucose[12]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T11:50:00', 'unit': 'mg/dL'}, glucose[24])
-        self.assertAlmostEqual(185.54, glucose[24]['amount'], delta=0.01)
+        self.assertAlmostEqual(186.57, glucose[24]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T12:50:00', 'unit': 'mg/dL'}, glucose[36])
-        self.assertAlmostEqual(166.21, glucose[36]['amount'], delta=0.01)
+        self.assertAlmostEqual(167.24, glucose[36]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T14:35:00', 'unit': 'mg/dL'}, glucose[-1])
-        self.assertAlmostEqual(127.22, glucose[-1]['amount'], delta=0.01)
+        self.assertAlmostEqual(128.25, glucose[-1]['amount'], delta=0.01)
 
     def test_momentum_down(self):
         momentum = [
@@ -1190,7 +1196,7 @@ class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
             },
             {
                 'date': '2015-10-16T10:00:00',
-                'amount': 6.0,
+                'amount': -6.0,
                 'unit': 'mg/dL'
             },
             {
@@ -1228,15 +1234,17 @@ class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
 
         self.assertDictEqual({'date': '2015-10-16T09:51:08', 'amount': 147.0, 'unit': 'mg/dL'}, glucose[0])
         self.assertDictContainsSubset({'date': '2015-10-16T09:55:00', 'unit': 'mg/dL'}, glucose[1])
-        self.assertAlmostEqual(144.94, glucose[1]['amount'], delta=0.01)
+        self.assertAlmostEqual(144.55, glucose[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T10:00:00', 'unit': 'mg/dL'}, glucose[2])
+        self.assertAlmostEqual(142.59, glucose[2]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T10:50:00', 'unit': 'mg/dL'}, glucose[12])
-        self.assertAlmostEqual(147.60, glucose[12]['amount'], delta=0.01)
+        self.assertAlmostEqual(144.78, glucose[12]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T11:50:00', 'unit': 'mg/dL'}, glucose[24])
-        self.assertAlmostEqual(174.40, glucose[24]['amount'], delta=0.01)
+        self.assertAlmostEqual(171.57, glucose[24]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T12:50:00', 'unit': 'mg/dL'}, glucose[36])
-        self.assertAlmostEqual(155.07, glucose[36]['amount'], delta=0.01)
+        self.assertAlmostEqual(152.24, glucose[36]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T14:35:00', 'unit': 'mg/dL'}, glucose[-1])
-        self.assertAlmostEqual(116.07, glucose[-1]['amount'], delta=0.01)
+        self.assertAlmostEqual(113.24, glucose[-1]['amount'], delta=0.01)
 
     def test_momentum_empty(self):
         glucose = calculate_glucose_from_effects(
@@ -1629,38 +1637,38 @@ class CalculateMomentumEffectTestCase(unittest.TestCase):
 
         self.assertListEqual([
             {
+                'date': '2015-10-27T17:15:00',
+                'amount': 0,
+                'unit': 'mg/dL'
+            },
+            {
                 'date': '2015-10-27T17:20:00',
-                'amount': 1.18,
+                'amount': 2.5,
                 'unit': 'mg/dL'
             },
             {
                 'date': '2015-10-27T17:25:00',
-                'amount': 3.68,
+                'amount': 5.0,
                 'unit': 'mg/dL'
             },
             {
                 'date': '2015-10-27T17:30:00',
-                'amount': 6.18,
+                'amount': 7.49,
                 'unit': 'mg/dL'
             },
             {
                 'date': '2015-10-27T17:35:00',
-                'amount': 8.68,
+                'amount': 9.99,
                 'unit': 'mg/dL'
             },
             {
                 'date': '2015-10-27T17:40:00',
-                'amount': 11.18,
+                'amount': 12.49,
                 'unit': 'mg/dL'
             },
             {
                 'date': '2015-10-27T17:45:00',
-                'amount': 13.67,
-                'unit': 'mg/dL'
-            },
-            {
-                'date': '2015-10-27T17:50:00',
-                'amount': 16.17,
+                'amount': 14.99,
                 'unit': 'mg/dL'
             }
         ], [{'date': m['date'], 'unit': m['unit'], 'amount': round(m['amount'], 2)} for m in momentum])
