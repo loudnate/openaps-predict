@@ -1603,12 +1603,6 @@ class CalculateMomentumEffectTestCase(unittest.TestCase):
                 "trend_arrow": "FLAT",
                 "system_time": "2015-10-28T01:16:47",
                 "display_time": "2015-10-27T17:17:38",
-                "glucose": 147
-            },
-            {
-                "trend_arrow": "FLAT",
-                "system_time": "2015-10-28T01:16:47",
-                "display_time": "2015-10-27T17:17:38",
                 "glucose": 153
             },
             {
@@ -1635,8 +1629,38 @@ class CalculateMomentumEffectTestCase(unittest.TestCase):
 
         self.assertListEqual([
             {
-                'date': '2015-10-27T17:15:00',
-                'amount': 0.0,
+                'date': '2015-10-27T17:20:00',
+                'amount': 1.18,
+                'unit': 'mg/dL'
+            },
+            {
+                'date': '2015-10-27T17:25:00',
+                'amount': 3.68,
+                'unit': 'mg/dL'
+            },
+            {
+                'date': '2015-10-27T17:30:00',
+                'amount': 6.18,
+                'unit': 'mg/dL'
+            },
+            {
+                'date': '2015-10-27T17:35:00',
+                'amount': 8.68,
+                'unit': 'mg/dL'
+            },
+            {
+                'date': '2015-10-27T17:40:00',
+                'amount': 11.18,
+                'unit': 'mg/dL'
+            },
+            {
+                'date': '2015-10-27T17:45:00',
+                'amount': 13.67,
+                'unit': 'mg/dL'
+            },
+            {
+                'date': '2015-10-27T17:50:00',
+                'amount': 16.17,
                 'unit': 'mg/dL'
             }
-        ], momentum)
+        ], [{'date': m['date'], 'unit': m['unit'], 'amount': round(m['amount'], 2)} for m in momentum])
