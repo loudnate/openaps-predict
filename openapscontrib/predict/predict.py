@@ -605,7 +605,7 @@ def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
             d_amount = entry['amount'] - last_momentum_amount
             last_momentum_amount = entry['amount']
 
-            blend_split = max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 1.0))
+            blend_split = min(1.0, max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 2.0)))
             effect_blend = (1.0 - blend_split) * timestamp_to_effect_dict.get(entry['date'], 0.0)
             momentum_blend = blend_split * d_amount
             timestamp_to_effect_dict[entry['date']] = momentum_blend + effect_blend
