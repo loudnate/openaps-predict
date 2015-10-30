@@ -305,7 +305,7 @@ def calculate_momentum_effect(
     glucose_slope, _, _, _, _ = linregress(fit_x, fit_y)
 
     for i, timestamp in enumerate(simulation_timestamps):
-        t = (timestamp - simulation_start).total_seconds()
+        t = max(0, (timestamp - last_glucose_datetime).total_seconds())
         momentum_effect[i] = t * glucose_slope
 
     return [{
@@ -596,9 +596,10 @@ def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
 
     if momentum_count > 1.0:
         # The blend begins 5 minutes after after the last glucose (1.0) and ends at the last momentum point (0.0)
+        first_momentum_datetime = parse(momentum[0]['date'])
         second_momentum_datetime = parse(momentum[1]['date'])
-        momentum_dt_s = (second_momentum_datetime - parse(momentum[0]['date'])).total_seconds()
-        momentum_offset_s = (second_momentum_datetime - parse(last_glucose_date)).total_seconds()
+        momentum_dt_s = (second_momentum_datetime - first_momentum_datetime).total_seconds()
+        momentum_offset_s = (parse(last_glucose_date) - first_momentum_datetime).total_seconds()
         d_blend = 1.0 / (momentum_count - 2.0)
         blend_offset = momentum_offset_s / momentum_dt_s * d_blend
 
@@ -606,7 +607,7 @@ def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
             d_amount = entry['amount'] - last_momentum_amount
             last_momentum_amount = entry['amount']
 
-            blend_split = min(1.0, max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 2.0) - blend_offset))
+            blend_split = min(1.0, max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 2.0) + blend_offset))
             effect_blend = (1.0 - blend_split) * timestamp_to_effect_dict.get(entry['date'], 0.0)
             momentum_blend = blend_split * d_amount
             timestamp_to_effect_dict[entry['date']] = momentum_blend + effect_blend
