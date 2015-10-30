@@ -595,17 +595,18 @@ def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
     momentum_count = float(len(momentum))
 
     if momentum_count > 1.0:
-        # first_momentum_datetime = parse(momentum[0]['date'])
-        # momentum_dt_s = (first_momentum_datetime - parse(momentum[1]['date'])).total_seconds()
-        # momentum_offset_s = (first_momentum_datetime - parse(last_glucose_date)).total_seconds()
-        # d_blend = 1.0 / (momentum_count - 1.0)
-        # blend_offset = momentum_offset_s / momentum_dt_s * d_blend
+        # The blend begins 5 minutes after after the last glucose (1.0) and ends at the last momentum point (0.0)
+        second_momentum_datetime = parse(momentum[1]['date'])
+        momentum_dt_s = (second_momentum_datetime - parse(momentum[0]['date'])).total_seconds()
+        momentum_offset_s = (second_momentum_datetime - parse(last_glucose_date)).total_seconds()
+        d_blend = 1.0 / (momentum_count - 2.0)
+        blend_offset = momentum_offset_s / momentum_dt_s * d_blend
 
         for i, entry in enumerate(momentum):
             d_amount = entry['amount'] - last_momentum_amount
             last_momentum_amount = entry['amount']
 
-            blend_split = min(1.0, max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 2.0)))
+            blend_split = min(1.0, max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 2.0) - blend_offset))
             effect_blend = (1.0 - blend_split) * timestamp_to_effect_dict.get(entry['date'], 0.0)
             momentum_blend = blend_split * d_amount
             timestamp_to_effect_dict[entry['date']] = momentum_blend + effect_blend
