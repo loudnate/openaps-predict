@@ -277,7 +277,7 @@ def calculate_momentum_effect(
     last_glucose_date, last_glucose_value = glucose_data_tuple(recent_glucose[0])
     last_glucose_datetime = parse(last_glucose_date)
     simulation_start = floor_datetime_at_minute_interval(last_glucose_datetime, dt)
-    simulation_end = ceil_datetime_at_minute_interval(last_glucose_datetime, dt) + datetime.timedelta(minutes=prediction_time)
+    simulation_end = simulation_start + datetime.timedelta(minutes=prediction_time)
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
     simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
     simulation_count = len(simulation_minutes)
@@ -556,7 +556,7 @@ def calculate_iob(
     } for i, timestamp in enumerate(simulation_timestamps)]
 
 
-def calculate_glucose_from_effects(effects, recent_glucose):
+def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
     """Calculates predicted glucose values from effect schedules starting from the end of measured glucose history
 
     Each effect should be a list of dicts containing at least 2 keys:
@@ -567,10 +567,12 @@ def calculate_glucose_from_effects(effects, recent_glucose):
 
     When working with multiple lists, they should have the same dt interval to ensure a smooth output.
 
-    :param effects: A list of timestamps and glucose values, relative to 0, in chronological order
+    :param effects: A list of lists of timestamps and glucose values, relative to 0, in chronological order
     :type effects: list(list(dict))
     :param recent_glucose: Historical glucose in reverse-chronological order, cleaned by openapscontrib.glucosetools
     :type recent_glucose: list(dict)
+    :param momentum: A list of relative glucose effect values, in chronological order, describing the momentum
+    :type momentum: list(dict)
     :return: A list of predicted glucose values
     :rtype: list(dict)
     """
@@ -587,6 +589,27 @@ def calculate_glucose_from_effects(effects, recent_glucose):
         for entry in effect:
             timestamp_to_effect_dict[entry['date']] += (entry['amount'] - last_effect_amount)
             last_effect_amount = entry['amount']
+
+    # Blend the momentum list linearly into the effect list
+    last_momentum_amount = 0
+    momentum_count = float(len(momentum))
+
+    if momentum_count > 1.0:
+        # The blend begins 5 minutes after after the last glucose (1.0) and ends at the last momentum point (0.0)
+        second_momentum_datetime = parse(momentum[1]['date'])
+        momentum_dt_s = (second_momentum_datetime - parse(momentum[0]['date'])).total_seconds()
+        momentum_offset_s = (second_momentum_datetime - parse(last_glucose_date)).total_seconds()
+        d_blend = 1.0 / (momentum_count - 2.0)
+        blend_offset = momentum_offset_s / momentum_dt_s * d_blend
+
+        for i, entry in enumerate(momentum):
+            d_amount = entry['amount'] - last_momentum_amount
+            last_momentum_amount = entry['amount']
+
+            blend_split = min(1.0, max(0.0, (momentum_count - (i + 1.0)) / (momentum_count - 2.0) - blend_offset))
+            effect_blend = (1.0 - blend_split) * timestamp_to_effect_dict.get(entry['date'], 0.0)
+            momentum_blend = blend_split * d_amount
+            timestamp_to_effect_dict[entry['date']] = momentum_blend + effect_blend
 
     combined_effect = sorted(timestamp_to_effect_dict.items(), key=lambda t: t[0])
 
