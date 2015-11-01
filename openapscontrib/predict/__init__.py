@@ -226,10 +226,10 @@ class scheiner_carb_effect(Use):
         kwargs = dict()
 
         if params.get('absorption_time'):
-            kwargs.update(absorption_duration=params.get('absorption_time'))
+            kwargs.update(absorption_duration=int(params.get('absorption_time')))
 
         if params.get('absorption_delay'):
-            kwargs.update(absorption_delay=params.get('absorption_delay'))
+            kwargs.update(absorption_delay=int(params.get('absorption_delay')))
 
         return args, kwargs
 
