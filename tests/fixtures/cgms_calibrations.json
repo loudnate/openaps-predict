@@ -1,0 +1,20 @@
+[
+  {
+    "system_time": "2015-10-28T01:11:45",
+    "meter_time": "2015-10-28T01:11:15",
+    "display_time": "2015-10-27T17:12:36",
+    "meter_glucose": 154
+  },
+  {
+    "system_time": "2015-10-27T17:12:43",
+    "meter_time": "2015-10-27T17:12:13",
+    "display_time": "2015-10-27T09:13:34",
+    "meter_glucose": 117
+  },
+  {
+    "system_time": "2015-10-27T05:25:00",
+    "meter_time": "2015-10-27T05:24:30",
+    "display_time": "2015-10-26T21:25:51",
+    "meter_glucose": 150
+  }
+]
