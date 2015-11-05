@@ -1085,6 +1085,77 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictContainsSubset({'date': '2015-10-16T02:40:00', 'unit': 'U'}, effect[-1])
         self.assertAlmostEqual(0, effect[-1]['amount'], delta=0.01)
 
+    def test_start_at(self):
+        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+            normalized_history = json.load(fp)
+
+        effect = calculate_iob(
+            normalized_history,
+            4,
+            start_at=datetime(2015, 10, 15, 22, 11, 00)
+        )
+
+        self.assertDictContainsSubset({'date': '2015-10-15T22:11:00', 'unit': 'U'}, effect[0])
+        self.assertAlmostEqual(8.30, effect[0]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T02:41:00', 'unit': 'U'}, effect[-1])
+        self.assertAlmostEqual(0, effect[-1]['amount'], delta=0.01)
+
+    def test_end_at(self):
+        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+            normalized_history = json.load(fp)
+
+        effect = calculate_iob(
+            normalized_history,
+            4,
+            end_at=datetime(2015, 10, 15, 20, 11, 00)
+        )
+
+        self.assertDictEqual({'date': '2015-10-15T18:05:00', 'amount': 0.0, 'unit': 'U'}, effect[0])
+        self.assertDictContainsSubset({'date': '2015-10-15T18:10:00', 'unit': 'U'}, effect[1])
+        self.assertAlmostEqual(0.0, effect[1]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'U'}, effect[3])
+        self.assertAlmostEqual(-0.02, effect[3]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'U'}, effect[12])
+        self.assertAlmostEqual(-0.47, effect[12]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-15T20:15:00', 'unit': 'U'}, effect[-1])
+        self.assertAlmostEqual(9.26, effect[-1]['amount'], delta=0.01)
+
+    def test_start_at_end_at(self):
+        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+            normalized_history = json.load(fp)
+
+        effect = calculate_iob(
+            normalized_history,
+            4,
+            start_at=datetime(2015, 10, 15, 22, 11, 00),
+            end_at=datetime(2015, 10, 16, 00, 01, 50)
+        )
+
+        self.assertDictContainsSubset({'date': '2015-10-15T22:11:00', 'unit': 'U'}, effect[0])
+        self.assertAlmostEqual(8.30, effect[0]['amount'], delta=0.01)
+        self.assertDictContainsSubset({'date': '2015-10-16T00:06:00', 'unit': 'U'}, effect[-1])
+        self.assertAlmostEqual(2.53, effect[-1]['amount'], delta=0.01)
+
+    def test_single_entry(self):
+        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+            normalized_history = json.load(fp)
+
+        effect = calculate_iob(
+            normalized_history,
+            4,
+            start_at=datetime(2015, 10, 15, 22, 11, 00),
+            end_at=datetime(2015, 10, 15, 22, 11, 00)
+        )
+
+        self.assertListEqual(
+            [{
+                'date': '2015-10-15T22:11:00',
+                'unit': 'U',
+                'amount': 8.306
+            }],
+            [e.update({'amount': round(e['amount'], 3)}) or e for e in effect]
+        )
+
 
 class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
     @classmethod
