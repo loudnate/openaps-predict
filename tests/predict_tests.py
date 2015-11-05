@@ -1,4 +1,6 @@
 from datetime import datetime
+from dateutil.parser import parse
+from dateutil.tz import tzutc
 import json
 import os
 import unittest
@@ -10,10 +12,74 @@ from openapscontrib.predict.predict import calculate_insulin_effect
 from openapscontrib.predict.predict import calculate_iob
 from openapscontrib.predict.predict import calculate_momentum_effect
 from openapscontrib.predict.predict import future_glucose
+from openapscontrib.predict.predict import glucose_data_tuple
 
 
 def get_file_at_path(path):
     return "{}/{}".format(os.path.dirname(os.path.realpath(__file__)), path)
+
+
+class GlucoseDataTupleTestCase(unittest.TestCase):
+    def test_nightscout_naive_entry(self):
+        date, glucose = glucose_data_tuple({
+            "_id": "5637e1b7313de36876dbdd0a",
+            "device": "xDrip-DexbridgeWixel",
+            "date": 1446502839045,
+            "display_time": "2015-11-02 23:20:39.045 ",
+            "glucose": 131,
+            "trend_arrow": "Flat",
+            "type": "glucose",
+            "filtered": 139648,
+            "unfiltered": 137792,
+            "rssi": 100,
+            "noise": 1
+        })
+
+        self.assertEqual(datetime(2015, 11, 2, 23, 20, 39, 45000), parse(date))
+        self.assertEqual(131, glucose)
+
+    def test_nightscount_aware_entry(self):
+        date, glucose = glucose_data_tuple({
+            "_id": "562977cc1c1181016e00554c",
+            "device": "dexcom",
+            "date": 1445558216000,
+            "dateString": "2015-07-13T10:00:00+00:00",
+            "direction": "Flat",
+            "noise": 1,
+            "type": "sgv",
+            "filtered": 168640,
+            "unfiltered": 168032,
+            "rssi": 205,
+            "glucose": 150
+        })
+
+        self.assertEqual(datetime(2015, 07, 13, 10, tzinfo=tzutc()), parse(date))
+        self.assertEqual(150, glucose)
+
+    def test_medtronic_entry(self):
+        date, glucose = glucose_data_tuple({
+            "name": "GlucoseSensorData",
+            "date_type": "prevTimestamp",
+            "_tell": 9,
+            "sgv": 142,
+            "date": "2015-07-28T23:01:00",
+            "packet_size": 0,
+            "op": 71
+        })
+
+        self.assertEqual(datetime(2015, 07, 28, 23, 1), parse(date))
+        self.assertEqual(142, glucose)
+
+    def test_dexcom_reader_entry(self):
+        date, glucose = glucose_data_tuple({
+            "trend_arrow": "FLAT",
+            "system_time": "2015-11-05T03:50:09",
+            "display_time": "2015-11-04T19:51:34",
+            "glucose": 143
+        })
+
+        self.assertEqual(datetime(2015, 11, 4, 19, 51, 34), parse(date))
+        self.assertEqual(143, glucose)
 
 
 class FutureGlucoseTestCase(unittest.TestCase):
