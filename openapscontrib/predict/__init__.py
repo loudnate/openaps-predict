@@ -16,6 +16,7 @@ import os
 from openaps.uses.use import Use
 
 from predict import Schedule
+from predict import calculate_momentum_effect
 from predict import calculate_carb_effect
 from predict import calculate_glucose_from_effects
 from predict import calculate_insulin_effect
@@ -47,7 +48,7 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return [glucose, glucose_from_effects, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
+    return [glucose, glucose_from_effects, glucose_momentum_effect, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
 
 
 def _opt_date(timestamp):
@@ -91,6 +92,72 @@ def make_naive(value, timezone=None):
         # This method is available for pytz time zones.
         value = timezone.normalize(value)
     return value.replace(tzinfo=None)
+
+
+# noinspection PyPep8Naming
+class glucose_momentum_effect(Use):
+    """Predict short-term trend of glucose
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'glucose',
+            help='JSON-encoded glucose data file in reverse-chronological order'
+        )
+
+        parser.add_argument(
+            '--prediction-time',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The total length of forward trend extrapolation in minutes. Defaults to 30.'
+        )
+
+        parser.add_argument(
+            '--calibrations',
+            nargs=argparse.OPTIONAL,
+            help='JSON-encoded sensor calibrations data file in reverse-chronological order'
+        )
+
+    def get_params(self, args):
+        params = super(glucose_momentum_effect, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('glucose', 'prediction_time', 'calibrations'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        args = (
+            _json_file(params['glucose']),
+        )
+
+        kwargs = dict()
+
+        if params.get('prediction_time'):
+            kwargs.update(prediction_time=int(params['prediction_time']))
+
+        if params.get('calibrations'):
+            kwargs.update(recent_calibrations=_opt_json_file(params['calibrations']) or ())
+
+        return args, kwargs
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_momentum_effect(*args, **kwargs)
 
 
 # noinspection PyPep8Naming
@@ -159,10 +226,10 @@ class scheiner_carb_effect(Use):
         kwargs = dict()
 
         if params.get('absorption_time'):
-            kwargs.update(absorption_duration=params.get('absorption_time'))
+            kwargs.update(absorption_duration=int(params.get('absorption_time')))
 
         if params.get('absorption_delay'):
-            kwargs.update(absorption_delay=params.get('absorption_delay'))
+            kwargs.update(absorption_delay=int(params.get('absorption_delay')))
 
         return args, kwargs
 
@@ -360,12 +427,17 @@ class glucose_from_effects(Use):
             help='JSON-encoded glucose data file in reverse-chronological order'
         )
 
+        parser.add_argument(
+            '--momentum',
+            help='JSON-encoded momentum effect schedule data file'
+        )
+
     def get_params(self, args):
         params = super(glucose_from_effects, self).get_params(args)
 
         args_dict = dict(**args.__dict__)
 
-        for key in ('effects', 'glucose'):
+        for key in ('effects', 'glucose', 'momentum'):
             value = args_dict.get(key)
             if value is not None:
                 params[key] = value
@@ -407,8 +479,15 @@ class glucose_from_effects(Use):
             effects.append(_json_file(f))
 
         args = (effects, recent_glucose)
+        kwargs = {}
 
-        return args, {}
+        momentum_file_name = params.get('momentum')
+        if momentum_file_name:
+            kwargs['momentum'] = _opt_json_file(params.get('momentum'))
+            file_time = datetime.fromtimestamp(os.path.getmtime(params['momentum']))
+            assert datetime.now() - file_time < timedelta(minutes=5), '{} is more than 5 minutes old'.format()
+
+        return args, kwargs
 
     def main(self, args, app):
         args, kwargs = self.get_program(self.get_params(args))
