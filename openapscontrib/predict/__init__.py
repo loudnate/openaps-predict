@@ -307,8 +307,8 @@ class walsh_insulin_effect(Use):
         """
         args = (
             _json_file(params['history']),
-            params.get('insulin_action_curve', None) or
-            _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
+            int(params.get('insulin_action_curve', None) or
+                _opt_json_file(params.get('settings', ''))['insulin_action_curve']),
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities'])
         )
 
@@ -317,7 +317,7 @@ class walsh_insulin_effect(Use):
         )
 
         if params.get('absorption_delay'):
-            kwargs.update(absorption_delay=params.get('absorption_delay'))
+            kwargs.update(absorption_delay=int(params.get('absorption_delay')))
 
         return args, kwargs
 
@@ -410,8 +410,8 @@ class walsh_iob(Use):
         """
         args = (
             _json_file(params['history']),
-            params.get('insulin_action_curve', None) or
-            _opt_json_file(params.get('settings', ''))['insulin_action_curve']
+            int(params.get('insulin_action_curve', None) or
+                _opt_json_file(params.get('settings', ''))['insulin_action_curve'])
         )
 
         kwargs = dict(
@@ -421,7 +421,7 @@ class walsh_iob(Use):
         )
 
         if params.get('absorption_delay'):
-            kwargs.update(absorption_delay=params.get('absorption_delay'))
+            kwargs.update(absorption_delay=int(params.get('absorption_delay')))
 
         return args, kwargs
 
@@ -613,8 +613,8 @@ class glucose(Use):
         args = (
             _json_file(params['pump-history']),
             recent_glucose,
-            params.get('insulin_action_curve', None) or
-            _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
+            int(params.get('insulin_action_curve', None) or
+                _opt_json_file(params.get('settings', ''))['insulin_action_curve']),
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities']),
             Schedule(_json_file(params['carb_ratios'])['schedule']),
         )
