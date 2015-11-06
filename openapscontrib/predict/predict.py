@@ -496,7 +496,9 @@ def calculate_iob(
     insulin_action_curve,
     dt=5,
     absorption_delay=10,
-    basal_dosing_end=None
+    basal_dosing_end=None,
+    start_at=None,
+    end_at=None
 ):
     """Calculates insulin on board degradation according to Walsh's algorithm, from the latest history entry until 0
 
@@ -510,6 +512,10 @@ def calculate_iob(
     :type absorption_delay: int
     :param basal_dosing_end: A datetime at which continuing doses should be assumed to be cancelled
     :type basal_dosing_end: datetime.datetime
+    :param start_at: A datetime override at which to begin the output
+    :type start_at: datetime.datetime
+    :param end_at: A datetime override at which to end the output
+    :type end_at: datetime.datetime
     :return: A list of IOB values and their timestamps
     :rtype: list(dict)
     """
@@ -519,8 +525,8 @@ def calculate_iob(
     first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
-    simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
-    simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + absorption_delay))
+    simulation_start = start_at or floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
+    simulation_end = end_at or last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + absorption_delay))
 
     insulin_duration_minutes = insulin_action_curve * 60.0
 

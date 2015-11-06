@@ -307,8 +307,8 @@ class walsh_insulin_effect(Use):
         """
         args = (
             _json_file(params['history']),
-            params.get('insulin_action_curve', None) or
-            _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
+            int(params.get('insulin_action_curve', None) or
+                _opt_json_file(params.get('settings', ''))['insulin_action_curve']),
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities'])
         )
 
@@ -317,7 +317,7 @@ class walsh_insulin_effect(Use):
         )
 
         if params.get('absorption_delay'):
-            kwargs.update(absorption_delay=params.get('absorption_delay'))
+            kwargs.update(absorption_delay=int(params.get('absorption_delay')))
 
         return args, kwargs
 
@@ -367,12 +367,32 @@ class walsh_iob(Use):
             help='The delay time between a dosing event and when absorption begins'
         )
 
+        parser.add_argument(
+            '--start-at',
+            nargs=argparse.OPTIONAL,
+            help='File containing the timestamp at which to truncate the beginning of the output, '
+                 'as a JSON-encoded ISO date'
+        )
+
+        parser.add_argument(
+            '--end-at',
+            nargs=argparse.OPTIONAL,
+            help='File containing the timestamp at which to truncate the end of the output, '
+                 'as a JSON-encoded ISO date'
+        )
+
     def get_params(self, args):
         params = super(walsh_iob, self).get_params(args)
 
         args_dict = dict(**args.__dict__)
 
-        for key in ('history', 'settings', 'insulin_action_curve', 'basal_dosing_end', 'absorption_delay'):
+        for key in ('history',
+                    'settings',
+                    'insulin_action_curve',
+                    'basal_dosing_end',
+                    'absorption_delay',
+                    'start_at',
+                    'end_at'):
             value = args_dict.get(key)
             if value is not None:
                 params[key] = value
@@ -390,16 +410,18 @@ class walsh_iob(Use):
         """
         args = (
             _json_file(params['history']),
-            params.get('insulin_action_curve', None) or
-            _opt_json_file(params.get('settings', ''))['insulin_action_curve']
+            int(params.get('insulin_action_curve', None) or
+                _opt_json_file(params.get('settings', ''))['insulin_action_curve'])
         )
 
         kwargs = dict(
-            basal_dosing_end=_opt_date(_opt_json_file(params.get('basal_dosing_end')))
+            basal_dosing_end=_opt_date(_opt_json_file(params.get('basal_dosing_end'))),
+            start_at=_opt_date(_opt_json_file(params.get('start_at'))),
+            end_at=_opt_date(_opt_json_file(params.get('end_at')))
         )
 
         if params.get('absorption_delay'):
-            kwargs.update(absorption_delay=params.get('absorption_delay'))
+            kwargs.update(absorption_delay=int(params.get('absorption_delay')))
 
         return args, kwargs
 
@@ -591,8 +613,8 @@ class glucose(Use):
         args = (
             _json_file(params['pump-history']),
             recent_glucose,
-            params.get('insulin_action_curve', None) or
-            _opt_json_file(params.get('settings', ''))['insulin_action_curve'],
+            int(params.get('insulin_action_curve', None) or
+                _opt_json_file(params.get('settings', ''))['insulin_action_curve']),
             Schedule(_json_file(params['insulin_sensitivities'])['sensitivities']),
             Schedule(_json_file(params['carb_ratios'])['schedule']),
         )
