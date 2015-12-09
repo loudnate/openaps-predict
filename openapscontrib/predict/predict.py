@@ -400,8 +400,35 @@ def calculate_cob(
     :return: A list of relative blood glucose values and their timestamps
     :rtype: list(dict)
     """
-    # TODO:
-    pass
+    if len(normalized_history) == 0:
+        return []
+
+    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
+    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
+    simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
+
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
+    simulation_count = len(simulation_minutes)
+
+    carbs = [0.0] * simulation_count
+
+    for history_event in normalized_history:
+        if history_event['unit'] == Unit.grams:
+            start_at = parse(history_event['start_at'])
+
+            for i, timestamp in enumerate(simulation_timestamps):
+                t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
+
+                carbs[i] += history_event['amount'] * carb_effect_curve(t, absorption_duration)
+
+    return [{
+        'date': timestamp.isoformat(),
+        'amount': carbs[i],
+        'unit': Unit.grams
+    } for i, timestamp in enumerate(simulation_timestamps)]
 
 
 def calculate_insulin_effect(
