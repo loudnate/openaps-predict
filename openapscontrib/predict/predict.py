@@ -423,7 +423,7 @@ def calculate_cob(
                 t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
 
                 if t >= 0 - absorption_delay:
-                    carbs[i] += history_event['amount'] * 1 - carb_effect_curve(t, absorption_duration)
+                    carbs[i] += history_event['amount'] * (1 - carb_effect_curve(t, absorption_duration))
 
     return [{
         'date': timestamp.isoformat(),
