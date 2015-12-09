@@ -82,6 +82,26 @@ def glucose_data_tuple(glucose_entry):
     )
 
 
+def scheiner_cob_curve(t, absorption_duration):
+    """Returns the fraction of unabsorbed carbohydrates at the specified number of minutes after eating.
+
+    :param t: The time in minutes since the carbs were eaten
+    :type t: float
+    :param absorption_duration: The total absorption time of the carbohydrates in minutes
+    :type absorption_duration: int
+    :return: A fraction of the initial carb intake, from 0 to 1
+    :rtype: float
+    """
+    if t < 0:
+        return 0.0
+    elif t <= absorption_duration / 2.0:
+        return 4.0 / (absorption_duration ** 2) * t
+    elif t < absorption_duration:
+        return 4.0 / (absorption_duration ** 2) * (absorption_duration - t)
+    else:
+        return 0.0
+
+
 def carb_effect_curve(t, absorption_time):
     """Returns the fraction of total carbohydrate effect with a given absorption time on blood
     glucose at the specified number of minutes after eating.
@@ -91,7 +111,7 @@ def carb_effect_curve(t, absorption_time):
 
     See: https://github.com/kenstack/GlucoDyn
 
-    :param t: The time in t since the carbs were eaten
+    :param t: The time in minutes since the carbs were eaten
     :type t: float
     :param absorption_time: The total absorption time of the carbohydrates in minutes
     :type absorption_time: int
@@ -422,7 +442,7 @@ def calculate_cob(
             for i, timestamp in enumerate(simulation_timestamps):
                 t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
 
-                carbs[i] += history_event['amount'] * carb_effect_curve(t, absorption_duration)
+                carbs[i] += history_event['amount'] * scheiner_cob_curve(t, absorption_duration)
 
     return [{
         'date': timestamp.isoformat(),

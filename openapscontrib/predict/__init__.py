@@ -49,7 +49,15 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return [glucose, glucose_from_effects, glucose_momentum_effect, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
+    return [
+        glucose,
+        glucose_from_effects,
+        glucose_momentum_effect,
+        scheiner_carb_effect,
+        scheiner_cob,
+        walsh_insulin_effect,
+        walsh_iob
+    ]
 
 
 def _opt_date(timestamp):
@@ -288,7 +296,7 @@ class scheiner_cob(Use):
         :rtype: tuple(list, dict)
         """
         args = (
-            _json_file(params['history'])
+            _json_file(params['history']),
         )
 
         kwargs = dict()
