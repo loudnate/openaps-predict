@@ -397,7 +397,7 @@ def calculate_cob(
     :type absorption_duration: int
     :param absorption_delay: The delay time before a meal begins absorption in minutes
     :type absorption_delay: int
-    :return: A list of relative blood glucose values and their timestamps
+    :return: A list of remaining carbohydrate values and their timestamps
     :rtype: list(dict)
     """
     if len(normalized_history) == 0:
