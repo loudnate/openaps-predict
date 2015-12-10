@@ -91,7 +91,7 @@ def carb_effect_curve(t, absorption_time):
 
     See: https://github.com/kenstack/GlucoDyn
 
-    :param t: The time in t since the carbs were eaten
+    :param t: The time in minutes since the carbs were eaten
     :type t: float
     :param absorption_time: The total absorption time of the carbohydrates in minutes
     :type absorption_time: int
@@ -397,11 +397,39 @@ def calculate_cob(
     :type absorption_duration: int
     :param absorption_delay: The delay time before a meal begins absorption in minutes
     :type absorption_delay: int
-    :return: A list of relative blood glucose values and their timestamps
+    :return: A list of remaining carbohydrate values and their timestamps
     :rtype: list(dict)
     """
-    # TODO:
-    pass
+    if len(normalized_history) == 0:
+        return []
+
+    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
+    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
+    simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
+
+    simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
+    simulation_timestamps = [simulation_start + datetime.timedelta(minutes=m) for m in simulation_minutes]
+    simulation_count = len(simulation_minutes)
+
+    carbs = [0.0] * simulation_count
+
+    for history_event in normalized_history:
+        if history_event['unit'] == Unit.grams:
+            start_at = parse(history_event['start_at'])
+
+            for i, timestamp in enumerate(simulation_timestamps):
+                t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
+
+                if t >= 0 - absorption_delay:
+                    carbs[i] += history_event['amount'] * (1 - carb_effect_curve(t, absorption_duration))
+
+    return [{
+        'date': timestamp.isoformat(),
+        'amount': carbs[i],
+        'unit': Unit.grams
+    } for i, timestamp in enumerate(simulation_timestamps)]
 
 
 def calculate_insulin_effect(
