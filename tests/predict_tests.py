@@ -1056,7 +1056,7 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictContainsSubset({'date': '2015-07-13T12:15:00', 'unit': 'U'}, effect[3])
         self.assertAlmostEqual(1.00, effect[3]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-07-13T14:10:00', 'unit': 'U'}, effect[26])
-        self.assertAlmostEqual(0.50, effect[26]['amount'], delta=0.01)
+        self.assertAlmostEqual(0.48, effect[26]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-07-13T16:20:00', 'unit': 'U'}, effect[-1])
         self.assertAlmostEqual(0.0, effect[-1]['amount'], delta=0.01)
 
@@ -1100,7 +1100,7 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictEqual({'date': '2015-07-17T12:00:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
         self.assertDictEqual({'date': '2015-07-17T16:40:00', 'amount': 0.0, 'unit': 'U'}, iob[-7])
         self.assertDictContainsSubset({'date': '2015-07-17T12:40:00', 'unit': 'U'}, iob[8])
-        self.assertAlmostEqual(0.56, iob[8]['amount'], delta=0.01)
+        self.assertAlmostEqual(0.48, iob[8]['amount'], delta=0.01)
 
     def test_no_input_history(self):
         normalized_history = []
@@ -1148,11 +1148,11 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'U'}, effect[3])
         self.assertAlmostEqual(-0.02, effect[3]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'U'}, effect[12])
-        self.assertAlmostEqual(-0.47, effect[12]['amount'], delta=0.01)
+        self.assertAlmostEqual(-0.39, effect[12]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-15T20:05:00', 'unit': 'U'}, effect[24])
-        self.assertAlmostEqual(5.70, effect[24]['amount'], delta=0.01)
+        self.assertAlmostEqual(5.61, effect[24]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-15T21:05:00', 'unit': 'U'}, effect[36])
-        self.assertAlmostEqual(7.27, effect[36]['amount'], delta=0.01)
+        self.assertAlmostEqual(6.92, effect[36]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T02:40:00', 'unit': 'U'}, effect[-1])
         self.assertAlmostEqual(0, effect[-1]['amount'], delta=0.01)
 
@@ -1167,7 +1167,7 @@ class CalculateIOBTestCase(unittest.TestCase):
         )
 
         self.assertDictContainsSubset({'date': '2015-10-15T22:11:00', 'unit': 'U'}, effect[0])
-        self.assertAlmostEqual(8.30, effect[0]['amount'], delta=0.01)
+        self.assertAlmostEqual(7.73, effect[0]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T02:41:00', 'unit': 'U'}, effect[-1])
         self.assertAlmostEqual(0, effect[-1]['amount'], delta=0.01)
 
@@ -1187,9 +1187,9 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'U'}, effect[3])
         self.assertAlmostEqual(-0.02, effect[3]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'U'}, effect[12])
-        self.assertAlmostEqual(-0.47, effect[12]['amount'], delta=0.01)
+        self.assertAlmostEqual(-0.40, effect[12]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-15T20:15:00', 'unit': 'U'}, effect[-1])
-        self.assertAlmostEqual(9.26, effect[-1]['amount'], delta=0.01)
+        self.assertAlmostEqual(9.17, effect[-1]['amount'], delta=0.01)
 
     def test_start_at_end_at(self):
         with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
@@ -1203,9 +1203,9 @@ class CalculateIOBTestCase(unittest.TestCase):
         )
 
         self.assertDictContainsSubset({'date': '2015-10-15T22:11:00', 'unit': 'U'}, effect[0])
-        self.assertAlmostEqual(8.30, effect[0]['amount'], delta=0.01)
+        self.assertAlmostEqual(7.73, effect[0]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-16T00:06:00', 'unit': 'U'}, effect[-1])
-        self.assertAlmostEqual(2.53, effect[-1]['amount'], delta=0.01)
+        self.assertAlmostEqual(2.16, effect[-1]['amount'], delta=0.01)
 
     def test_single_entry(self):
         with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
@@ -1222,7 +1222,7 @@ class CalculateIOBTestCase(unittest.TestCase):
             [{
                 'date': '2015-10-15T22:11:00',
                 'unit': 'U',
-                'amount': 8.306
+                'amount': 7.729
             }],
             [e.update({'amount': round(e['amount'], 3)}) or e for e in effect]
         )

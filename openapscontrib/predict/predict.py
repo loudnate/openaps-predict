@@ -590,7 +590,7 @@ def calculate_iob(
                 t0 = 0
                 t1 = (end_at - start_at).total_seconds() / 60.0
 
-                effect = history_event['amount'] * sum_iob(t0, t1, insulin_duration_minutes, t, dt)
+                effect = history_event['amount'] * (t1 - t0) / 60.0 * sum_iob(t0, t1, insulin_duration_minutes, t, dt)
             else:
                 continue
 
