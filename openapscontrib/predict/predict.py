@@ -176,7 +176,7 @@ def integrate_iob(t0, t1, insulin_action_duration, t):
     return integral * dx / 3.0
 
 
-def sum_iob(t0, t1, insulin_action_duration, t, dt):
+def sum_iob(t0, t1, insulin_action_duration, t, dt, absorption_delay=0):
     """Sums the percent IOB activity at a given time for a temp basal dose
 
     :param t0: The start time in minutes of the dose
@@ -187,6 +187,10 @@ def sum_iob(t0, t1, insulin_action_duration, t, dt):
     :type insulin_action_duration: int
     :param t: The current time in minutes
     :type t: float
+    :param absorption_delay: The delay time before a dose begins absorption in minutes. Any value greater than 0 will
+                             result in an IOB value appearing immediately after dosing that remains constant for the
+                             specified time before decaying.
+    :type absorption_delay: int
     :param dt: The segment size over which to sum
     :return: The sum of IOB at time t, in percent
     """
@@ -194,7 +198,7 @@ def sum_iob(t0, t1, insulin_action_duration, t, dt):
 
     # Divide the dose into equal segments of dt, from t0 to t1
     for i in arange(t0, t1 + dt, dt):
-        if t - i >= 0:
+        if t + absorption_delay >= i:
             segment = max(0, min(i + dt, t1) - i) / (t1 - t0)
             iob += segment * walsh_iob_curve(t - i, insulin_action_duration)
 
@@ -533,7 +537,8 @@ def calculate_iob(
     absorption_delay=10,
     basal_dosing_end=None,
     start_at=None,
-    end_at=None
+    end_at=None,
+    visual_iob_only=True
 ):
     """Calculates insulin on board degradation according to Walsh's algorithm, from the latest history entry until 0
 
@@ -551,6 +556,9 @@ def calculate_iob(
     :type start_at: datetime.datetime
     :param end_at: A datetime override at which to end the output
     :type end_at: datetime.datetime
+    :param visual_iob_only: Whether the dose should appear as IOB immediately after delivery rather than waiting for the
+                            absorption delay. You might want this to be False if you plan to integrate the area under
+                            the resulting curve.
     :return: A list of IOB values and their timestamps
     :rtype: list(dict)
     """
@@ -582,7 +590,8 @@ def calculate_iob(
             if t < 0 - absorption_delay:
                 continue
             elif history_event['unit'] == Unit.units:
-                effect = history_event['amount'] * walsh_iob_curve(t, insulin_duration_minutes)
+                if visual_iob_only or t >= 0:
+                    effect = history_event['amount'] * walsh_iob_curve(t, insulin_duration_minutes)
             elif history_event['unit'] == Unit.units_per_hour:
                 if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
                     end_at = basal_dosing_end
@@ -590,7 +599,14 @@ def calculate_iob(
                 t0 = 0
                 t1 = (end_at - start_at).total_seconds() / 60.0
 
-                effect = history_event['amount'] * (t1 - t0) / 60.0 * sum_iob(t0, t1, insulin_duration_minutes, t, dt)
+                effect = history_event['amount'] * (t1 - t0) / 60.0 * sum_iob(
+                    t0,
+                    t1,
+                    insulin_duration_minutes,
+                    t,
+                    dt,
+                    absorption_delay=(absorption_delay if visual_iob_only else 0)
+                )
             else:
                 continue
 
