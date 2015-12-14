@@ -1,6 +1,7 @@
 from collections import defaultdict
 import datetime
 from dateutil.parser import parse
+from functools32 import lru_cache
 import math
 from numpy import arange
 from operator import add
@@ -20,6 +21,7 @@ class Schedule(object):
         """
         self.entries = entries
 
+    @lru_cache()
     def at(self, time):
         """
 
