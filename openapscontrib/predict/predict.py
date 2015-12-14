@@ -134,13 +134,13 @@ def walsh_iob_curve(t, insulin_action_duration):
         iob = 0.0
     elif t <= 0:
         iob = 1.0
-    elif insulin_action_duration == 3 * 60:
+    elif insulin_action_duration == 180:
         iob = -3.2030e-9 * (t**4) + 1.354e-6 * (t**3) - 1.759e-4 * (t**2) + 9.255e-4 * t + 0.99951
-    elif insulin_action_duration == 4 * 60:
+    elif insulin_action_duration == 240:
         iob = -3.310e-10 * (t**4) + 2.530e-7 * (t**3) - 5.510e-5 * (t**2) - 9.086e-4 * t + 0.99950
-    elif insulin_action_duration == 5 * 60:
+    elif insulin_action_duration == 300:
         iob = -2.950e-10 * (t**4) + 2.320e-7 * (t**3) - 5.550e-5 * (t**2) + 4.490e-4 * t + 0.99300
-    elif insulin_action_duration == 6 * 60:
+    elif insulin_action_duration == 360:
         iob = -1.493e-10 * (t**4) + 1.413e-7 * (t**3) - 4.095e-5 * (t**2) + 6.365e-4 * t + 0.99700
 
     return iob
@@ -216,7 +216,7 @@ def cumulative_bolus_effect_at_time(event, t, insulin_sensitivity, insulin_actio
     :type t: float
     :param insulin_sensitivity: The insulin sensitivity at time t, in mg/dL/U
     :type insulin_sensitivity: float
-    :param insulin_action_duration: The duration of insulin action at time t, in hours
+    :param insulin_action_duration: The duration of insulin action at time t, in minutes
     :type insulin_action_duration: int
     :return: The cumulative effect of the bolus on blood glucose at time t, in mg/dL
     :rtype: float
@@ -224,7 +224,7 @@ def cumulative_bolus_effect_at_time(event, t, insulin_sensitivity, insulin_actio
     if t < 0:
         return 0
 
-    return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration * 60.0))
+    return -event['amount'] * insulin_sensitivity * (1 - walsh_iob_curve(t, insulin_action_duration))
 
 
 def carb_effect_at_datetime(event, t, insulin_sensitivity, carb_ratio, absorption_rate):
@@ -255,7 +255,7 @@ def cumulative_temp_basal_effect_at_time(event, t, t0, t1, insulin_sensitivity, 
     :type t1: float
     :param insulin_sensitivity:
     :type insulin_sensitivity: int
-    :param insulin_action_duration:
+    :param insulin_action_duration: in minutes
     :type insulin_action_duration: int
     :return:
     :rtype: float
@@ -263,7 +263,7 @@ def cumulative_temp_basal_effect_at_time(event, t, t0, t1, insulin_sensitivity, 
     if t < t0:
         return 0
 
-    int_iob = integrate_iob(t0, t1, insulin_action_duration * 60, t)
+    int_iob = integrate_iob(t0, t1, insulin_action_duration, t)
 
     return event['amount'] / 60.0 * -insulin_sensitivity * ((t1 - t0) - int_iob)
 
@@ -471,6 +471,7 @@ def calculate_insulin_effect(
     :rtype: list(dict)
     """
     assert insulin_action_curve in (3, 4, 5, 6)
+    insulin_action_curve *= 60
 
     if len(normalized_history) == 0:
         return []
@@ -479,7 +480,7 @@ def calculate_insulin_effect(
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
-    simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + absorption_delay))
+    simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve + absorption_delay))
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
@@ -491,7 +492,7 @@ def calculate_insulin_effect(
     for history_event in normalized_history:
         start_at = parse(history_event['start_at'])
         end_at = parse(history_event['end_at'])
-        effect_end_at = end_at + datetime.timedelta(hours=insulin_action_curve)
+        effect_end_at = end_at + datetime.timedelta(minutes=insulin_action_curve)
 
         insulin_sensitivity = insulin_sensitivity_schedule.at(start_at.time())['sensitivity']
 
@@ -566,6 +567,9 @@ def calculate_iob(
     :return: A list of IOB values and their timestamps
     :rtype: list(dict)
     """
+    assert insulin_action_curve in (3, 4, 5, 6)
+    insulin_duration_minutes = insulin_action_curve * 60.0
+
     if len(normalized_history) == 0:
         return []
 
@@ -573,9 +577,7 @@ def calculate_iob(
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = start_at or floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
-    simulation_end = end_at or last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve * 60 + absorption_delay))
-
-    insulin_duration_minutes = insulin_action_curve * 60.0
+    simulation_end = end_at or last_history_datetime + datetime.timedelta(minutes=(insulin_duration_minutes + absorption_delay))
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
