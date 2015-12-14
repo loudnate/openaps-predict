@@ -4,7 +4,6 @@ from dateutil.parser import parse
 from functools32 import lru_cache
 import math
 from numpy import arange
-from operator import add
 from scipy.stats import linregress
 
 from models import Unit
@@ -263,7 +262,10 @@ def cumulative_temp_basal_effect_at_time(event, t, t0, t1, insulin_sensitivity, 
     if t < t0:
         return 0
 
-    int_iob = integrate_iob(t0, t1, insulin_action_duration, t)
+    if t > t1 + insulin_action_duration:
+        int_iob = 0
+    else:
+        int_iob = integrate_iob(t0, t1, insulin_action_duration, t)
 
     return event['amount'] / 60.0 * -insulin_sensitivity * ((t1 - t0) - int_iob)
 
