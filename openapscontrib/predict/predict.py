@@ -579,7 +579,9 @@ def calculate_iob(
     last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = start_at or floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
-    simulation_end = end_at or last_history_datetime + datetime.timedelta(minutes=(insulin_duration_minutes + absorption_delay))
+    simulation_end = end_at or last_history_datetime + datetime.timedelta(
+        minutes=insulin_duration_minutes + absorption_delay
+    )
 
     # For each incremental minute from the simulation start time, calculate the effect values
     simulation_minutes = range(0, int(math.ceil((simulation_end - simulation_start).total_seconds() / 60.0)) + dt, dt)
@@ -594,6 +596,7 @@ def calculate_iob(
 
         for i, timestamp in enumerate(simulation_timestamps):
             t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
+            effect = 0
 
             if t < 0 - absorption_delay:
                 continue

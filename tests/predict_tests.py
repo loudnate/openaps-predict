@@ -1229,7 +1229,7 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'U'}, effect[12])
         self.assertAlmostEqual(-0.39, effect[12]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-15T20:15:00', 'unit': 'U'}, effect[-2])
-        self.assertAlmostEqual(5.94, effect[-2]['amount'], delta=0.01)
+        self.assertAlmostEqual(5.86, effect[-2]['amount'], delta=0.01)
         self.assertDictContainsSubset({'date': '2015-10-15T20:20:00', 'unit': 'U'}, effect[-1])
         self.assertAlmostEqual(9.10, effect[-1]['amount'], delta=0.01)
 
