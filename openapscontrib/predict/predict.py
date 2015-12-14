@@ -127,7 +127,7 @@ def walsh_iob_curve(t, insulin_action_duration):
     :return: The fraction of a insulin dosage remaining at the specified time
     :rtype: float
     """
-    assert insulin_action_duration in (3 * 60, 4 * 60, 5 * 60, 6 * 60)
+    # assert insulin_action_duration in (3 * 60, 4 * 60, 5 * 60, 6 * 60)
     iob = 0
 
     if t >= insulin_action_duration:
@@ -470,6 +470,8 @@ def calculate_insulin_effect(
     :return: A list of relative blood glucose values and their timestamps
     :rtype: list(dict)
     """
+    assert insulin_action_curve in (3, 4, 5, 6)
+
     if len(normalized_history) == 0:
         return []
 
