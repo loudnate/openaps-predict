@@ -498,6 +498,12 @@ def calculate_insulin_effect(
 
         insulin_sensitivity = insulin_sensitivity_schedule.at(start_at.time())['sensitivity']
 
+        if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
+            end_at = basal_dosing_end
+
+        t0 = 0
+        t1 = (end_at - start_at).total_seconds() / 60.0
+
         for i, timestamp in enumerate(simulation_timestamps):
             t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
 
@@ -510,12 +516,6 @@ def calculate_insulin_effect(
                 # after completion
                 sensitivity_time = min(effect_end_at, timestamp)
                 insulin_sensitivity = insulin_sensitivity_schedule.at(sensitivity_time.time())['sensitivity']
-
-                if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
-                    end_at = basal_dosing_end
-
-                t0 = 0
-                t1 = (end_at - start_at).total_seconds() / 60.0
 
                 effect = cumulative_temp_basal_effect_at_time(
                     history_event,
