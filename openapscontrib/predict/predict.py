@@ -504,6 +504,16 @@ def calculate_insulin_effect(
         t0 = 0
         t1 = (end_at - start_at).total_seconds() / 60.0
 
+        # Optimize rate-based events as single points in time if their duration is less than dt
+        if history_event['unit'] == Unit.units_per_hour and t1 - t0 <= 1.05 * dt:
+            history_event = {
+                'type': history_event['type'],
+                'start_at': start_at,
+                'end_at': start_at,
+                'unit': Unit.units,
+                'amount': history_event['amount'] * (t1 - t0) / 60.0
+            }
+
         for i, timestamp in enumerate(simulation_timestamps):
             t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
 
@@ -594,6 +604,23 @@ def calculate_iob(
         start_at = parse(history_event['start_at'])
         end_at = parse(history_event['end_at'])
 
+        if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
+            end_at = basal_dosing_end
+
+        t0 = 0
+        t1 = (end_at - start_at).total_seconds() / 60.0
+        amount = history_event['amount'] * (t1 - t0) / 60.0
+
+        # Optimize rate-based events as single points in time if their duration is less than dt
+        if history_event['unit'] == Unit.units_per_hour and t1 - t0 <= 1.05 * dt:
+            history_event = {
+                'type': history_event['type'],
+                'start_at': start_at,
+                'end_at': start_at,
+                'unit': Unit.units,
+                'amount': history_event['amount'] * (t1 - t0) / 60.0
+            }
+
         for i, timestamp in enumerate(simulation_timestamps):
             t = (timestamp - start_at).total_seconds() / 60.0 - absorption_delay
             effect = 0
@@ -604,13 +631,7 @@ def calculate_iob(
                 if visual_iob_only or t >= 0:
                     effect = history_event['amount'] * walsh_iob_curve(t, insulin_duration_minutes)
             elif history_event['unit'] == Unit.units_per_hour:
-                if history_event['type'] == 'TempBasal' and basal_dosing_end and end_at > basal_dosing_end:
-                    end_at = basal_dosing_end
-
-                t0 = 0
-                t1 = (end_at - start_at).total_seconds() / 60.0
-
-                effect = history_event['amount'] * (t1 - t0) / 60.0 * sum_iob(
+                effect = amount * sum_iob(
                     t0,
                     t1,
                     insulin_duration_minutes,
