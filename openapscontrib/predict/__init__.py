@@ -18,6 +18,7 @@ from openaps.uses.use import Use
 from predict import Schedule
 from predict import calculate_momentum_effect
 from predict import calculate_carb_effect
+from predict import calculate_cob
 from predict import calculate_glucose_from_effects
 from predict import calculate_insulin_effect
 from predict import calculate_iob
@@ -48,7 +49,15 @@ def display_device(device):
 # agp as a vendor.  Return a list of classes which inherit from Use,
 # or are compatible with it:
 def get_uses(device, config):
-    return [glucose, glucose_from_effects, glucose_momentum_effect, scheiner_carb_effect, walsh_insulin_effect, walsh_iob]
+    return [
+        glucose,
+        glucose_from_effects,
+        glucose_momentum_effect,
+        scheiner_carb_effect,
+        scheiner_cob,
+        walsh_insulin_effect,
+        walsh_iob
+    ]
 
 
 def _opt_date(timestamp):
@@ -237,6 +246,73 @@ class scheiner_carb_effect(Use):
         args, kwargs = self.get_program(self.get_params(args))
 
         return calculate_carb_effect(*args, **kwargs)
+
+
+# noinspection PyPep8Naming
+class scheiner_cob(Use):
+    """Predict unabsorbed carbohydrates, using the Scheiner GI curve
+
+    """
+    @staticmethod
+    def configure_app(app, parser):
+        parser.add_argument(
+            'history',
+            help='JSON-encoded pump history data file, normalized by openapscontrib.mmhistorytools'
+        )
+
+        parser.add_argument(
+            '--absorption-time',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The total length of carbohydrate absorption in minutes'
+        )
+
+        parser.add_argument(
+            '--absorption-delay',
+            type=int,
+            nargs=argparse.OPTIONAL,
+            help='The delay time between a dosing event and when absorption begins'
+        )
+
+    def get_params(self, args):
+        params = super(scheiner_cob, self).get_params(args)
+
+        args_dict = dict(**args.__dict__)
+
+        for key in ('history', 'absorption_time', 'absorption_delay'):
+            value = args_dict.get(key)
+            if value is not None:
+                params[key] = value
+
+        return params
+
+    @staticmethod
+    def get_program(params):
+        """Parses params into history parser constructor arguments
+
+        :param params:
+        :type params: dict
+        :return:
+        :rtype: tuple(list, dict)
+        """
+        args = (
+            _json_file(params['history']),
+        )
+
+        kwargs = dict()
+
+        if params.get('absorption_time'):
+            kwargs.update(absorption_duration=int(params.get('absorption_time')))
+
+        if params.get('absorption_delay'):
+            kwargs.update(absorption_delay=int(params.get('absorption_delay')))
+
+        return args, kwargs
+
+    def main(self, args, app):
+        args, kwargs = self.get_program(self.get_params(args))
+
+        return calculate_cob(*args, **kwargs)
 
 
 # noinspection PyPep8Naming
