@@ -7,6 +7,7 @@ import unittest
 
 from openapscontrib.predict.predict import Schedule
 from openapscontrib.predict.predict import calculate_carb_effect
+from openapscontrib.predict.predict import calculate_cob
 from openapscontrib.predict.predict import calculate_glucose_from_effects
 from openapscontrib.predict.predict import calculate_insulin_effect
 from openapscontrib.predict.predict import calculate_iob
@@ -542,6 +543,68 @@ class CalculateCarbEffectTestCase(unittest.TestCase):
             normalized_history,
             Schedule(self.carb_ratios['schedule']),
             Schedule(self.insulin_sensitivities['sensitivities'])
+        )
+
+        self.assertListEqual(
+            expected_output,
+            effect
+        )
+
+
+class CalculateCOBTestCase(unittest.TestCase):
+    def test_carb_completion(self):
+        normalized_history = [
+            {
+                "type": "Meal",
+                "start_at": "2015-07-15T14:30:00",
+                "end_at": "2015-07-15T14:30:00",
+                "amount": 9,
+                "unit": "g"
+            }
+        ]
+
+        effect = calculate_cob(
+            normalized_history
+        )
+
+        self.assertDictEqual({'date': '2015-07-15T17:40:00', 'amount': 0.0, 'unit': 'g'}, effect[-1])
+
+    def test_no_input_history(self):
+        normalized_history = []
+
+        effect = calculate_cob(
+            normalized_history
+        )
+
+        self.assertListEqual([], effect)
+
+    def test_fake_unit(self):
+        normalized_history = [
+            {
+                "start_at": "2015-09-07T22:23:08",
+                "description": "JournalEntryExerciseMarker",
+                "end_at": "2015-09-07T22:23:08",
+                "amount": 1,
+                "type": "Exercise",
+                "unit": "beer"
+            }
+        ]
+
+        effect = calculate_cob(
+            normalized_history
+        )
+
+        self.assertDictEqual({'date': '2015-09-07T22:20:00', 'amount': 0.0, 'unit': 'g'}, effect[0])
+        self.assertDictEqual({'date': '2015-09-08T01:35:00', 'amount': 0.0, 'unit': 'g'}, effect[-1])
+
+    def test_complicated_history(self):
+        with open(get_file_at_path("fixtures/carb_effect_from_history_input.json")) as fp:
+            normalized_history = json.load(fp)
+        with open(get_file_at_path("fixtures/carbs_on_board_output.json")) as fp:
+            expected_output = json.load(fp)
+
+        effect = calculate_cob(
+            normalized_history
         )
 
         self.assertListEqual(
