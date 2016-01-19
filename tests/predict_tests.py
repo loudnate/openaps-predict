@@ -533,8 +533,10 @@ class CalculateCarbEffectTestCase(unittest.TestCase):
         self.assertDictEqual({'date': '2015-09-08T01:35:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[-1])
 
     def test_complicated_history(self):
-        with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
+        with open(get_file_at_path("fixtures/carb_effect_from_history_input.json")) as fp:
             normalized_history = json.load(fp)
+        with open(get_file_at_path("fixtures/carb_effect_from_history_output.json")) as fp:
+            expected_output = json.load(fp)
 
         effect = calculate_carb_effect(
             normalized_history,
@@ -542,19 +544,10 @@ class CalculateCarbEffectTestCase(unittest.TestCase):
             Schedule(self.insulin_sensitivities['sensitivities'])
         )
 
-        self.assertDictEqual({'date': '2015-10-15T18:05:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
-        self.assertDictContainsSubset({'date': '2015-10-15T18:10:00', 'unit': 'mg/dL'}, effect[1])
-        self.assertAlmostEqual(0.0, effect[1]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'mg/dL'}, effect[3])
-        self.assertAlmostEqual(0.0, effect[3]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'mg/dL'}, effect[12])
-        self.assertAlmostEqual(1.19, effect[12]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T20:05:00', 'unit': 'mg/dL'}, effect[24])
-        self.assertAlmostEqual(102.83, effect[24]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T21:05:00', 'unit': 'mg/dL'}, effect[36])
-        self.assertAlmostEqual(345.54, effect[36]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-16T01:40:00', 'unit': 'mg/dL'}, effect[-1])
-        self.assertAlmostEqual(945.00, effect[-1]['amount'], delta=0.01)
+        self.assertListEqual(
+            expected_output,
+            effect
+        )
 
 
 class CalculateInsulinEffectTestCase(unittest.TestCase):
