@@ -364,8 +364,8 @@ def calculate_carb_effect(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
@@ -418,8 +418,8 @@ def calculate_cob(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
@@ -478,8 +478,8 @@ def calculate_insulin_effect(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve + absorption_delay))
@@ -585,8 +585,8 @@ def calculate_iob(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = start_at or floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = end_at or last_history_datetime + datetime.timedelta(
