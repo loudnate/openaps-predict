@@ -1681,256 +1681,48 @@ class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
 
 class CalculateMomentumEffectTestCase(unittest.TestCase):
     def test_rising_glucose(self):
-        glucose = [
-            {
-                'date': '2015-10-25T19:30:00',
-                'amount': 129
-            },
-            {
-                'date': '2015-10-25T19:25:00',
-                'amount': 126
-            },
-            {
-                'date': '2015-10-25T19:20:00',
-                'amount': 123
-            },
-            {
-                'date': '2015-10-25T19:15:00',
-                'amount': 120
-            }
-        ]
+        with open(get_file_at_path('fixtures/momentum_effect_rising_glucose_input.json')) as fp:
+            glucose = json.load(fp)
+
+        with open(get_file_at_path('fixtures/momentum_effect_rising_glucose_output.json')) as fp:
+            output = json.load(fp)
 
         momentum = calculate_momentum_effect(glucose)
 
-        self.assertListEqual(
-            [
-                {
-                    'date': '2015-10-25T19:30:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:35:00',
-                    'amount': 3,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:40:00',
-                    'amount': 6,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:45:00',
-                    'amount': 9,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:50:00',
-                    'amount': 12,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:55:00',
-                    'amount': 15,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T20:00:00',
-                    'amount': 18,
-                    'unit': 'mg/dL'
-                }
-            ],
-            momentum
-        )
+        self.assertListEqual(output, momentum)
 
     def test_bouncing_glucose(self):
-        glucose = [
-            {
-                'date': '2015-10-25T19:30:00',
-                'amount': 129
-            },
-            {
-                'date': '2015-10-25T19:25:00',
-                'amount': 120
-            },
-            {
-                'date': '2015-10-25T19:20:00',
-                'amount': 123
-            },
-            {
-                'date': '2015-10-25T19:15:00',
-                'amount': 126
-            }
-        ]
+        with open(get_file_at_path('fixtures/momentum_effect_bouncing_glucose_input.json')) as fp:
+            glucose = json.load(fp)
+
+        with open(get_file_at_path('fixtures/momentum_effect_bouncing_glucose_output.json')) as fp:
+            output = json.load(fp)
 
         momentum = calculate_momentum_effect(glucose)
 
-        self.assertListEqual(
-            [
-                {
-                    'date': '2015-10-25T19:30:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:35:00',
-                    'amount': 3,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:40:00',
-                    'amount': 6,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:45:00',
-                    'amount': 9,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:50:00',
-                    'amount': 12,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:55:00',
-                    'amount': 15,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T20:00:00',
-                    'amount': 18,
-                    'unit': 'mg/dL'
-                }
-            ],
-            momentum
-        )
+        self.assertListEqual(output, momentum)
 
     def test_falling_glucose(self):
-        glucose = [
-            {
-                'date': '2015-10-25T19:30:00',
-                'amount': 120
-            },
-            {
-                'date': '2015-10-25T19:25:00',
-                'amount': 123
-            },
-            {
-                'date': '2015-10-25T19:20:00',
-                'amount': 126
-            },
-            {
-                'date': '2015-10-25T19:15:00',
-                'amount': 129
-            }
-        ]
+        with open(get_file_at_path('fixtures/momentum_effect_falling_glucose_input.json')) as fp:
+            glucose = json.load(fp)
+
+        with open(get_file_at_path('fixtures/momentum_effect_falling_glucose_output.json')) as fp:
+            output = json.load(fp)
 
         momentum = calculate_momentum_effect(glucose)
 
-        self.assertListEqual(
-            [
-                {
-                    'date': '2015-10-25T19:30:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:35:00',
-                    'amount': -3,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:40:00',
-                    'amount': -6,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:45:00',
-                    'amount': -9,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:50:00',
-                    'amount': -12,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:55:00',
-                    'amount': -15,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T20:00:00',
-                    'amount': -18,
-                    'unit': 'mg/dL'
-                }
-            ],
-            momentum
-        )
+        self.assertListEqual(output, momentum)
 
     def test_stable_glucose(self):
-        glucose = [
-            {
-                'date': '2015-10-25T19:30:00',
-                'amount': 120
-            },
-            {
-                'date': '2015-10-25T19:25:00',
-                'amount': 120
-            },
-            {
-                'date': '2015-10-25T19:20:00',
-                'amount': 120
-            },
-            {
-                'date': '2015-10-25T19:15:00',
-                'amount': 123
-            }
-        ]
+        with open(get_file_at_path('fixtures/momentum_effect_stable_glucose_input.json')) as fp:
+            glucose = json.load(fp)
+
+        with open(get_file_at_path('fixtures/momentum_effect_stable_glucose_output.json')) as fp:
+            output = json.load(fp)
 
         momentum = calculate_momentum_effect(glucose)
 
-        self.assertListEqual(
-            [
-                {
-                    'date': '2015-10-25T19:30:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:35:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:40:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:45:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:50:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T19:55:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                },
-                {
-                    'date': '2015-10-25T20:00:00',
-                    'amount': 0.0,
-                    'unit': 'mg/dL'
-                }
-            ],
-            momentum
-        )
+        self.assertListEqual(output, momentum)
 
     def test_missing_number_of_entries(self):
         glucose = [
