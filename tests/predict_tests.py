@@ -1251,6 +1251,15 @@ class CalculateIOBTestCase(unittest.TestCase):
         self.assertDictContainsSubset({'date': '2015-10-16T02:40:00', 'unit': 'U'}, effect[-1])
         self.assertAlmostEqual(0, effect[-1]['amount'], delta=0.01)
 
+    def test_complicated_history_visual_iob_true(self):
+        with open(get_file_at_path('fixtures/normalize_history.json')) as fp:
+            history = json.load(fp)
+
+        with open(get_file_at_path('fixtures/iob.json')) as fp:
+            expected_output = json.load(fp)
+
+        self.assertListEqual(expected_output, calculate_iob(history, 4))
+
     def test_start_at(self):
         with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
             normalized_history = json.load(fp)
