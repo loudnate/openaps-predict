@@ -198,10 +198,9 @@ def sum_iob(t0, t1, insulin_action_duration, t, dt, absorption_delay=0):
     iob = 0
 
     # Divide the dose into equal segments of dt, from t0 to t1
-    for i in arange(t0, t1 + dt, dt):
-        if t + absorption_delay >= i:
-            segment = max(0, min(i + dt, t1) - i) / (t1 - t0)
-            iob += segment * walsh_iob_curve(t - i, insulin_action_duration)
+    for i in arange(t0, min(t1 + dt, math.floor((t + absorption_delay) / dt) * dt + dt), dt):
+        segment = max(0, min(i + dt, t1) - i) / (t1 - t0)
+        iob += segment * walsh_iob_curve(t - i, insulin_action_duration)
 
     return iob
 

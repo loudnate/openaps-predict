@@ -1041,7 +1041,7 @@ class CalculateIOBTestCase(unittest.TestCase):
                 "type": "Bolus",
                 "start_at": "2015-07-13T12:02:37",
                 "end_at": "2015-07-13T12:02:37",
-                "amount": 1.0,
+                "amount": 1.5,
                 "unit": "U"
             }
         ]
@@ -1051,10 +1051,10 @@ class CalculateIOBTestCase(unittest.TestCase):
             4
         )
 
-        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 0.0, 'unit': 'U'}, iob[0])
-        self.assertDictContainsSubset({'date': '2015-07-13T12:15:00', 'unit': 'U'}, iob[3])
-        self.assertAlmostEqual(0.99, iob[3]['amount'], delta=0.01)
-        self.assertDictEqual({'date': '2015-07-13T16:15:00', 'amount': 0.0, 'unit': 'U'}, iob[-1])
+        with open(get_file_at_path("fixtures/iob_from_bolus_output.json")) as fp:
+            expected_output = json.load(fp)
+
+        self.assertListEqual(expected_output, iob)
 
     def test_multiple_bolus(self):
         normalized_history = [
@@ -1355,6 +1355,16 @@ class CalculateIOBTestCase(unittest.TestCase):
             }],
             [e.update({'amount': round(e['amount'], 3)}) or e for e in effect]
         )
+
+    def test_reservoir_history(self):
+        with open(get_file_at_path('fixtures/normalized_reservoir_history_output.json')) as fp:
+            normalized_history = json.load(fp)
+        with open(get_file_at_path('fixtures/iob_from_reservoir_output.json')) as fp:
+            expected_output = json.load(fp)
+
+        effect = calculate_iob(normalized_history, 4)
+
+        self.assertListEqual(expected_output, effect)
 
 
 class CalculateGlucoseFromEffectsTestCase(unittest.TestCase):
