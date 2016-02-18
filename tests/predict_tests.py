@@ -625,10 +625,13 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
                 "type": "Bolus",
                 "start_at": "2015-07-13T12:01:32",
                 "end_at": "2015-07-13T12:01:32",
-                "amount": 1.0,
+                "amount": 1.5,
                 "unit": "U"
             }
         ]
+
+        with open(get_file_at_path('fixtures/effect_from_bolus_output.json')) as fp:
+            expected = json.load(fp)
 
         effect = calculate_insulin_effect(
             normalized_history,
@@ -636,8 +639,7 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
             Schedule(self.insulin_sensitivities['sensitivities'])
         )
 
-        self.assertDictEqual({'date': '2015-07-13T12:00:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
-        self.assertDictEqual({'date': '2015-07-13T16:15:00', 'amount': -40.0, 'unit': 'mg/dL'}, effect[-1])
+        self.assertListEqual(expected, effect)
 
     def test_short_temp_basal(self):
         normalized_history = [
@@ -769,6 +771,11 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
             4,
             Schedule(self.insulin_sensitivities['sensitivities'])
         )
+
+        with open(get_file_at_path('fixtures/effect_from_square_bolus_output.json')) as fp:
+            expected = json.load(fp)
+
+        self.assertListEqual(expected, effect)
 
         self.assertDictContainsSubset({'date': '2015-07-13T12:10:00', 'unit': 'mg/dL'}, effect[2])
         self.assertAlmostEqual(-1.06, effect[2]['amount'], delta=0.01)
@@ -992,25 +999,16 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
         with open(get_file_at_path("fixtures/normalize_history.json")) as fp:
             normalized_history = json.load(fp)
 
+        with open(get_file_at_path('fixtures/effect_from_history_output.json')) as fp:
+            expected = json.load(fp)
+
         effect = calculate_insulin_effect(
             normalized_history,
             4,
             Schedule(self.insulin_sensitivities['sensitivities'])
         )
 
-        self.assertDictEqual({'date': '2015-10-15T18:05:00', 'amount': 0.0, 'unit': 'mg/dL'}, effect[0])
-        self.assertDictContainsSubset({'date': '2015-10-15T18:10:00', 'unit': 'mg/dL'}, effect[1])
-        self.assertAlmostEqual(0.0, effect[1]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T18:20:00', 'unit': 'mg/dL'}, effect[3])
-        self.assertAlmostEqual(0.0, effect[3]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T19:05:00', 'unit': 'mg/dL'}, effect[12])
-        self.assertAlmostEqual(1.44, effect[12]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T20:05:00', 'unit': 'mg/dL'}, effect[24])
-        self.assertAlmostEqual(-9.35, effect[24]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-15T21:05:00', 'unit': 'mg/dL'}, effect[36])
-        self.assertAlmostEqual(-96.69, effect[36]['amount'], delta=0.01)
-        self.assertDictContainsSubset({'date': '2015-10-16T02:40:00', 'unit': 'mg/dL'}, effect[-1])
-        self.assertAlmostEqual(-589.61, effect[-1]['amount'], delta=0.01)
+        self.assertListEqual(expected, effect)
 
 
 class CalculateIOBTestCase(unittest.TestCase):
