@@ -639,7 +639,10 @@ class CalculateInsulinEffectTestCase(unittest.TestCase):
             Schedule(self.insulin_sensitivities['sensitivities'])
         )
 
-        self.assertListEqual(expected, effect)
+        self.assertListEqual(
+            [{'date': x['date'], 'amount': round(x['amount'], 13), 'unit': x['unit']} for x in expected],
+            [{'date': x['date'], 'amount': round(x['amount'], 13), 'unit': x['unit']} for x in effect]
+        )
 
     def test_short_temp_basal(self):
         normalized_history = [
