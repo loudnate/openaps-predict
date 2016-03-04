@@ -685,10 +685,11 @@ def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
             last_effect_amount = entry['amount']
 
     # Blend the momentum list linearly into the effect list
-    last_momentum_amount = 0
     momentum_count = float(len(momentum))
 
     if momentum_count > 1.0:
+        last_momentum_amount = 0
+
         # The blend begins 5 minutes after after the last glucose (1.0) and ends at the last momentum point (0.0)
         first_momentum_datetime = parse(momentum[0]['date'])
         second_momentum_datetime = parse(momentum[1]['date'])
