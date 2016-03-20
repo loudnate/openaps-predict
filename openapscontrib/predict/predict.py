@@ -198,10 +198,9 @@ def sum_iob(t0, t1, insulin_action_duration, t, dt, absorption_delay=0):
     iob = 0
 
     # Divide the dose into equal segments of dt, from t0 to t1
-    for i in arange(t0, t1 + dt, dt):
-        if t + absorption_delay >= i:
-            segment = max(0, min(i + dt, t1) - i) / (t1 - t0)
-            iob += segment * walsh_iob_curve(t - i, insulin_action_duration)
+    for i in arange(t0, min(t1 + dt, math.floor((t + absorption_delay) / dt) * dt + dt), dt):
+        segment = max(0, min(i + dt, t1) - i) / (t1 - t0)
+        iob += segment * walsh_iob_curve(t - i, insulin_action_duration)
 
     return iob
 
@@ -364,8 +363,8 @@ def calculate_carb_effect(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
@@ -418,8 +417,8 @@ def calculate_cob(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = last_history_datetime + datetime.timedelta(minutes=(absorption_duration + absorption_delay))
@@ -478,8 +477,8 @@ def calculate_insulin_effect(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = last_history_datetime + datetime.timedelta(minutes=(insulin_action_curve + absorption_delay))
@@ -585,8 +584,8 @@ def calculate_iob(
     if len(normalized_history) == 0:
         return []
 
-    first_history_event = sorted(normalized_history, key=lambda e: e['start_at'])[0]
-    last_history_event = sorted(normalized_history, key=lambda e: e['end_at'])[-1]
+    first_history_event = min(normalized_history, key=lambda e: e['start_at'])
+    last_history_event = max(normalized_history, key=lambda e: e['end_at'])
     last_history_datetime = ceil_datetime_at_minute_interval(parse(last_history_event['end_at']), dt)
     simulation_start = start_at or floor_datetime_at_minute_interval(parse(first_history_event['start_at']), dt)
     simulation_end = end_at or last_history_datetime + datetime.timedelta(
@@ -686,10 +685,11 @@ def calculate_glucose_from_effects(effects, recent_glucose, momentum=()):
             last_effect_amount = entry['amount']
 
     # Blend the momentum list linearly into the effect list
-    last_momentum_amount = 0
     momentum_count = float(len(momentum))
 
     if momentum_count > 1.0:
+        last_momentum_amount = 0
+
         # The blend begins 5 minutes after after the last glucose (1.0) and ends at the last momentum point (0.0)
         first_momentum_datetime = parse(momentum[0]['date'])
         second_momentum_datetime = parse(momentum[1]['date'])
